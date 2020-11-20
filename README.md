@@ -1,6 +1,6 @@
 # tb-mean-field-hubbard 
 
-Python library to perform tight-binding mean field Hubbard calculations on the conjugated π-sytems of organic systems.
+Python library to perform tight-binding mean field Hubbard calculations on the conjugated π-networks of organic systems.
 Only carbon atoms are supported and each atom is assumed a single p<sub>z</sub> orbital with a single electron.
 
 The modelled Hamiltonian is the following:
