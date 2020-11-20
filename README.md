@@ -9,3 +9,8 @@ The modelled Hamiltonian is the following:
 
 
 Example jupyter notebook `mfh.ipynb` is provided that performs the calculation for the Clar's goblet molecule.
+
+Python dependencies:
+* Standard python libraries: `numpy`, `matplotlib`
+* Atomistic simulation environment: `ase`
+* Python Tight Binding: `pythtb`
