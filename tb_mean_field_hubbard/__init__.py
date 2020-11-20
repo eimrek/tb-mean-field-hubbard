@@ -220,8 +220,8 @@ class MeanFieldHubbardModel:
                 for n in ns:
                     
                     if n < i_at:
-                        self.model_a.set_hop(t, i_at, n)
-                        self.model_b.set_hop(t, i_at, n)
+                        self.model_a.set_hop(-t, i_at, n)
+                        self.model_b.set_hop(-t, i_at, n)
     
     def visualize_tb_model(self):
         self.model_a.visualize(0, 1)
