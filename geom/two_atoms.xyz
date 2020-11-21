@@ -1,0 +1,4 @@
+2
+Lattice="10.0 0.0 0.0 0.0 10.0 0.0 0.0 0.0 10.0" Properties=species:S:1:pos:R:3:tags:I:1 a=T pbc="F F F"
+C        0.0 0.0 0.0        1
+C        1.5 0.0 0.0        2

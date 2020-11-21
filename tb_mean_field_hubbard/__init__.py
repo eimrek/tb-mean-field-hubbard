@@ -1,5 +1,5 @@
 
-from pythtb import * # import TB model class
+from pythtb import *
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -95,7 +95,7 @@ def visualize_evec(ax, atoms, evec):
 def make_plot(figsize, atoms, data_list, title_list=None, filename=None):
 
     if not isinstance(data_list, list):
-        raise Error("data_list needs to be a list")
+        raise Exception("data_list needs to be a list")
 
     figs = (figsize[0] * len(data_list), figsize[1])
     
@@ -114,10 +114,10 @@ def make_plot(figsize, atoms, data_list, title_list=None, filename=None):
         visualize_backbone(ax, atoms)
         visualize_evec(ax, atoms, d)
         ax.axis('off')
-        xmin = np.min(atoms.positions[:, 0])-1.0
-        xmax = np.max(atoms.positions[:, 0])+1.0
-        ymin = np.min(atoms.positions[:, 1])-1.0
-        ymax = np.max(atoms.positions[:, 1])+1.0
+        xmin = np.min(atoms.positions[:, 0])-2.0
+        xmax = np.max(atoms.positions[:, 0])+2.0
+        ymin = np.min(atoms.positions[:, 1])-2.0
+        ymax = np.max(atoms.positions[:, 1])+2.0
         ax.set_xlim([xmin, xmax])
         ax.set_ylim([ymin, ymax])
         ax.set_title(title)
@@ -151,7 +151,7 @@ class MeanFieldHubbardModel:
         self.num_atoms = len(ase_geom)
 
         self.figure_size = self._atoms_extent(self.ase_geom) / 4.0
-        self.figure_size[0] += 1.0
+        self.figure_size[0] += 2.5
 
         self.spin_guess = self._load_spin_guess(self.ase_geom)
         
@@ -159,8 +159,8 @@ class MeanFieldHubbardModel:
 
         self._set_up_tb_model()
 
-        self.mag_list = None
-        self.energy_list = None
+        self.absmag_iter = None
+        self.energy_iter = None
 
         self.evals = None
         self.evecs = None
@@ -261,7 +261,7 @@ class MeanFieldHubbardModel:
 
             self.model_a.set_onsite(u * d[1], i_at, mode="reset")
             self.model_b.set_onsite(u * d[0], i_at, mode="reset")
-        
+
         # Solve the new TB
         (evals_a, evecs_a) = self.model_a.solve_all(eig_vectors=True)
         (evals_b, evecs_b) = self.model_b.solve_all(eig_vectors=True)
@@ -277,7 +277,7 @@ class MeanFieldHubbardModel:
     def abs_magnetization(self, spin_resolved_dens):
         return np.sum(np.abs(spin_resolved_dens[:, 0] - spin_resolved_dens[:, 1]))
 
-    def energy(self, evals):
+    def get_total_occ_orb_energy(self, evals):
         energy = 0.0
         for i_spin in range(2):
             for i_ev, ev in enumerate(evals[i_spin]):
@@ -290,21 +290,21 @@ class MeanFieldHubbardModel:
 
         self.spin_resolved_dens = np.copy(self.spin_guess)
 
-        self.mag_list = []
-        self.energy_list = []
+        self.absmag_iter = []
+        self.energy_iter = []
 
         for iteration in range(max_iter):
             evals, evecs = self.mfh_iteration(u)
-            self.mag_list.append(self.abs_magnetization(self.spin_resolved_dens))
-            self.energy_list.append(self.energy(evals))
+            self.absmag_iter.append(self.abs_magnetization(self.spin_resolved_dens))
+            self.energy_iter.append(self.get_total_occ_orb_energy(evals))
 
             if print_iter:
                 print("Iter %3d: energy %.10f; abs mag %.10f" % (
-                    iteration, self.energy_list[-1], self.mag_list[-1]))
+                    iteration, self.energy_iter[-1], self.absmag_iter[-1]))
 
             if iteration > 0:
-                de = self.energy_list[-1] - self.energy_list[-2]
-                dm = self.mag_list[-1] - self.mag_list[-2]
+                de = self.energy_iter[-1] - self.energy_iter[-2]
+                dm = self.absmag_iter[-1] - self.absmag_iter[-2]
 
                 if np.abs(de) < energy_tol and np.abs(dm) < mag_tol:
                     if print_iter:
@@ -317,20 +317,26 @@ class MeanFieldHubbardModel:
         self.evals = evals
         self.evecs = evecs
 
-        gap_a, gap_b, gap = self.gaps(self.evals)
-        self.gap_a = gap_a
-        self.gap_b = gap_b
-        self.gap_eff = gap
+        # post-process
+
+        # constant energy term in the MFH  [ U*sum(<n_i><n_j>) ]
+        self.const_mfh_energy_term = -u * np.sum(self.spin_resolved_dens[:, 0] * self.spin_resolved_dens[:, 1])
+
+        self.energy = self.energy_iter[-1] + self.const_mfh_energy_term
+        self.abs_mag = self.absmag_iter[-1]
+
+        self.spin_density = self.spin_resolved_dens[:, 0] - self.spin_resolved_dens[:, 1]
+
+        self.gap_a, self.gap_b, self.gap_eff = self.gaps(self.evals)
 
         if plot:
-            fig = plt.figure()
             ax1 = plt.gca()
             ax1.set_xlabel('iteration')
-            ax1.plot(self.mag_list, color='blue')
+            ax1.plot(self.absmag_iter, color='blue')
             ax1.set_ylabel('abs. magnetization', color='blue')
             ax1.tick_params(axis='y', labelcolor='blue')
             ax2 = ax1.twinx()
-            ax2.plot(self.energy_list, color='red')
+            ax2.plot(self.energy_iter, color='red')
             ax2.set_ylabel('energy', color='red')
             ax2.tick_params(axis='y', labelcolor='red')
             plt.show()
@@ -341,20 +347,24 @@ class MeanFieldHubbardModel:
     ### -------------------------------------------------------------------
 
     def gaps(self, evals):
-        homo_a = evals[0][self.num_spin_el[0]-1]
-        lumo_a = evals[0][self.num_spin_el[0]]
-        
-        homo_b = evals[1][self.num_spin_el[1]-1]
-        lumo_b = evals[1][self.num_spin_el[1]]
-        
-        gap_a = lumo_a-homo_a
-        gap_b = lumo_b-homo_b
-        gap = np.min([lumo_a, lumo_b]) - np.max([homo_a, homo_b])
-        
-        return gap_a, gap_b, gap
+        try:
+            homo_a = evals[0][self.num_spin_el[0]-1]
+            lumo_a = evals[0][self.num_spin_el[0]]
+            
+            homo_b = evals[1][self.num_spin_el[1]-1]
+            lumo_b = evals[1][self.num_spin_el[1]]
+            
+            gap_a = lumo_a-homo_a
+            gap_b = lumo_b-homo_b
+            gap = np.min([lumo_a, lumo_b]) - np.max([homo_a, homo_b])
 
+            return gap_a, gap_b, gap
+
+        except IndexError:
+            return np.nan, np.nan, np.nan
+    
     def plot_evals(self, evals, filename=None):
-        fig = plt.figure(figsize=(3.0, 6))
+        plt.figure(figsize=(3.0, 6))
         ax = plt.gca()
 
         for i_spin in range(2):
@@ -379,11 +389,11 @@ class MeanFieldHubbardModel:
 
     def report(self, num_orb=2):
 
-        print("abs. magnetization: %14.6f" % self.mag_list[-1])
-        print("energy:             %14.6f" % self.energy_list[-1])
+        print("abs. magnetization: %14.6f" % self.abs_mag)
+        print("energy:             %14.6f" % self.energy)
         print("---")
         print("spin density:")
-        make_plot(self.figure_size, self.ase_geom, [1.0*(self.spin_resolved_dens[:, 0] - self.spin_resolved_dens[:, 1])])
+        make_plot(self.figure_size, self.ase_geom, [1.0*self.spin_density])
 
         print("---")
         print("eigenvalues:")
@@ -397,15 +407,18 @@ class MeanFieldHubbardModel:
         for i_rel in np.arange(num_orb, -num_orb, -1):
             
             i_mo = int(np.around(0.5*(self.num_spin_el[0] + self.num_spin_el[1]))) + i_rel - 1
+
+            if i_mo < 0 or i_mo > len(self.evecs[0])-1:
+                continue
             
             titles = [
-                "mo%d α %s, en: %.4f" % (i_mo, orb_label(i_mo, self.num_spin_el[0]), self.evals[0][i_mo]),
-                "mo%d β %s, en: %.4f" % (i_mo, orb_label(i_mo, self.num_spin_el[1]), self.evals[1][i_mo]),
+                "mo%d α %s, en: %.2f" % (i_mo, orb_label(i_mo, self.num_spin_el[0]), self.evals[0][i_mo]),
+                "mo%d β %s, en: %.2f" % (i_mo, orb_label(i_mo, self.num_spin_el[1]), self.evals[1][i_mo]),
             ]
             make_plot(self.figure_size, self.ase_geom, [self.evecs[0][i_mo], self.evecs[1][i_mo]], title_list=titles)
 
     def plot_orbital(self, mo_index, spin=0):
-        title = "mo%d α %s, en: %.4f" % (
-            mo_index, orb_label(mo_index, self.num_spin_el[spin]), self.evals[spin][mo_index])
+        title = "mo%d s%d %s, en: %.2f" % (
+            mo_index, spin, orb_label(mo_index, self.num_spin_el[spin]), self.evals[spin][mo_index])
         make_plot(self.figure_size, self.ase_geom, [self.evecs[spin][mo_index]], title_list=[title])
 
