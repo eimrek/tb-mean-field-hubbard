@@ -15,3 +15,19 @@ Python dependencies:
 * Standard python libraries: `numpy`, `matplotlib`
 * Atomistic simulation environment: `ase`
 * Python Tight Binding: `pythtb`
+
+### Installation
+
+Option 1) To install the dependencies and the library, one can use
+```
+pip install git+https://github.com/eimrek/tb-mean-field-hubbard.git#egg=tb-mean-field-hubbard
+```
+
+Option 2) To also have access to the code and the notebook, it's better to call instead
+```
+git clone https://github.com/eimrek/tb-mean-field-hubbard.git
+cd tb-mean-field-hubbard
+pip install -e .
+```
+
+Option 3) If dependencies are already installed, then simply downloading the code and executing the notebook will work.
