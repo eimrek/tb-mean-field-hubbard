@@ -3,6 +3,7 @@ from pythtb import *
 import numpy as np
 
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
 import os
 
@@ -375,11 +376,16 @@ class MeanFieldHubbardModel:
                 line_pos = [0.1, 0.9] if i_spin == 0 else [1.1, 1.9]
                 plt.plot(line_pos, [ev, ev], '-', color=col, lw=2.0, solid_capstyle='round')
 
-        ax.get_xaxis().set_visible(False)
+        blue_patch = mpatches.Patch(color='blue', label='empty')
+        red_patch = mpatches.Patch(color='red', label='occupied')
+        plt.legend(handles=[blue_patch, red_patch], loc='upper left', bbox_to_anchor=(1.0, 1.0))
+
+        #ax.get_xaxis().set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.spines['top'].set_visible(False)
-        ax.spines['bottom'].set_visible(False)
+        #ax.spines['bottom'].set_visible(False)
         plt.xlim(0.0, 2.0)
+        plt.xticks([0.5, 1.5], ["spin α", "spin β"])
         #plt.ylim(-6.0, 10.0)
         plt.ylabel("Energy (eV)")
         #plt.yticks(fontsize=30)
@@ -403,6 +409,9 @@ class MeanFieldHubbardModel:
         print("gap alpha: %.6f" % gap_a)
         print("gap beta:  %.6f" % gap_b)
         print("gap eff.:  %.6f" % gap)
+
+        print("---")
+        print("frontier orbitals:")
 
         for i_rel in np.arange(num_orb, -num_orb, -1):
             
