@@ -171,7 +171,10 @@ class MeanFieldHubbardModel:
         y_extent = np.ptp(ase_geom.positions[:, 1]) + 1.0
         return np.array([x_extent, y_extent])
 
-    def _load_spin_guess(self, ase_geom):
+    def _load_spin_guess(self, ase_geom, flip_alpha_majority=True):
+        """
+        flip_alpha_majority - flip spin guess to have majority spin in alpha channel
+        """
         spin_guess = []
         for at in ase_geom:
             if at.tag == 0:
@@ -180,7 +183,11 @@ class MeanFieldHubbardModel:
                 spin_guess.append([1.0, 0.0])
             elif at.tag == 2:
                 spin_guess.append([0.0, 1.0])
-        return np.array(spin_guess)
+        spin_guess = np.array(spin_guess)
+        if flip_alpha_majority:
+            if np.sum(spin_guess[:, 0]) < np.sum(spin_guess[:, 1]):
+                spin_guess[:, 0], spin_guess[:, 1] = spin_guess[:, 1], spin_guess[:, 0].copy()
+        return spin_guess
         
     def _set_up_tb_model(self):
 
