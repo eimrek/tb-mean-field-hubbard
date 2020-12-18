@@ -1,6 +1,7 @@
 
 from pythtb import *
 import numpy as np
+import scipy.special
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -93,39 +94,23 @@ def visualize_evec(ax, atoms, evec):
     #print("Area: %.6f"%area)
     #print(" Vol: %.6f"%vol)
 
-def make_plot(figsize, atoms, data_list, title_list=None, filename=None):
+def make_plot(ax, atoms, data, title=None, filename=None):
 
-    if not isinstance(data_list, list):
-        raise Exception("data_list needs to be a list")
+    ax.set_aspect('equal')
+    visualize_backbone(ax, atoms)
+    visualize_evec(ax, atoms, data)
+    ax.axis('off')
+    xmin = np.min(atoms.positions[:, 0])-2.0
+    xmax = np.max(atoms.positions[:, 0])+2.0
+    ymin = np.min(atoms.positions[:, 1])-2.0
+    ymax = np.max(atoms.positions[:, 1])+2.0
+    ax.set_xlim([xmin, xmax])
+    ax.set_ylim([ymin, ymax])
+    ax.set_title(title)
 
-    figs = (figsize[0] * len(data_list), figsize[1])
-    
-    fig, _ = plt.subplots(nrows=1, ncols=len(data_list), figsize=figs)
-    axs = fig.axes
-
-    for i_data, d in enumerate(data_list):
-        ax = axs[i_data]
-
-        title = None
-        if title_list is not None:
-            title = title_list[i_data]
-
-        ax.set_aspect('equal')
-
-        visualize_backbone(ax, atoms)
-        visualize_evec(ax, atoms, d)
-        ax.axis('off')
-        xmin = np.min(atoms.positions[:, 0])-2.0
-        xmax = np.max(atoms.positions[:, 0])+2.0
-        ymin = np.min(atoms.positions[:, 1])-2.0
-        ymax = np.max(atoms.positions[:, 1])+2.0
-        ax.set_xlim([xmin, xmax])
-        ax.set_ylim([ymin, ymax])
-        ax.set_title(title)
     if filename is not None:
         plt.savefig('%s.png' % filename, dpi=300, bbox_inches='tight')
         plt.savefig('%s.pdf' % filename, bbox_inches='tight')
-    plt.show()
     
 def orb_label(i_mo, n_el):
     i_rel = i_mo - n_el + 1
@@ -139,6 +124,35 @@ def orb_label(i_mo, n_el):
         label = "LUMO+%d"%(i_rel-1)
     return label
 
+
+### ------------------------------------------------------------------------------
+### GRID ORBITALS
+### ------------------------------------------------------------------------------
+
+def hydrogen_like_orbital(x, y, z, n, l, m, nuc=1):
+    # https://en.wikipedia.org/wiki/Hydrogen-like_atom#Non-relativistic_wavefunction_and_energy
+    
+    r = lambda x,y,z: np.sqrt(x**2+y**2+z**2)
+    theta = lambda x,y,z: np.arccos(z/(r(x,y,z)+1e-100))
+    phi = lambda x,y,z: np.arctan(y/(x+1e-100))
+
+    a0 = 0.529177 # Bohr radius in angstrom
+    
+    def radial(r, n, l):
+        norm_factor = np.sqrt((2*nuc/(n*a0))**3 * np.math.factorial(n-l-1) / (2*n*np.math.factorial(n+l)))
+        rad = np.exp(-nuc*r/(n * a0)) * (2*nuc*r/(n*a0))**l * scipy.special.genlaguerre(n-l-1,2*l+1)(2*nuc*r/(n*a0))
+        return norm_factor * rad
+    
+    return radial(r(x,y,z),n,l) * scipy.special.sph_harm(m,l,phi(x,y,z),theta(x,y,z))
+
+def gaussian(x, fwhm):
+    sigma = fwhm/2.3548
+    return np.exp(-x**2/(2*sigma**2))/(sigma*np.sqrt(2*np.pi))
+
+
+### ------------------------------------------------------------------------------
+### Main class
+### ------------------------------------------------------------------------------
 
 class MeanFieldHubbardModel:
 
@@ -236,7 +250,9 @@ class MeanFieldHubbardModel:
         plt.show()
 
     def visualize_spin_guess(self):
-        make_plot(self.figure_size, self.ase_geom, [0.5*(self.spin_guess[:, 0] - self.spin_guess[:, 1])])
+        plt.figure(figsize=self.figure_size)
+        make_plot(plt.gca(), self.ase_geom, 0.5*(self.spin_guess[:, 0] - self.spin_guess[:, 1]))
+        plt.show()
         
     def print_parameters(self):
         print("Total number of electrons: %d" % self.num_el)
@@ -399,14 +415,44 @@ class MeanFieldHubbardModel:
         if filename is not None:
             plt.savefig(filename, dpi=300, bbox_inches='tight')
         plt.show()
+        
+    def plot_sts_map(self, ax, energy, z=6.0, broadening=0.05, edge_space=5.0, dx=0.1, title=None):
+    
+        atoms = self.ase_geom
+        xmin = np.min(atoms.positions[:, 0])-edge_space
+        xmax = np.max(atoms.positions[:, 0])+edge_space
+        ymin = np.min(atoms.positions[:, 1])-edge_space
+        ymax = np.max(atoms.positions[:, 1])+edge_space
+        
+        # define grid
+        x,y = np.ogrid[xmin:xmax:dx,ymin:ymax:dx]
+        final_map = np.zeros((x.shape[0], y.shape[1]))
+        
+        for i_spin in range(2):
+            for evl, evc in zip(self.evals[i_spin], self.evecs[i_spin]):
+                if np.abs(energy-evl) <= 3.0 * broadening:
+                    broad_coef = gaussian(energy-evl, broadening)
+                    orb_map = np.zeros((x.shape[0], y.shape[1]), dtype=np.complex)
+                    for at, coef in zip(atoms, evc):
+                        p = at.position
+                        pz_orb = hydrogen_like_orbital(x-p[0], y-p[1], z-p[2], 2, 1, 0, nuc=1)
+                        orb_map += broad_coef*coef*pz_orb
+                    final_map += np.abs(orb_map)**2
+        
+        ax.imshow(final_map.T, origin='lower', cmap='gray')
+        ax.axis('off')
+        ax.set_title(title)
 
-    def report(self, num_orb=2):
+
+    def report(self, num_orb=2, sts_h=3.5):
 
         print("abs. magnetization: %14.6f" % self.abs_mag)
         print("energy:             %14.6f" % self.energy)
         print("---")
         print("spin density:")
-        make_plot(self.figure_size, self.ase_geom, [1.0*self.spin_density])
+        plt.figure(figsize=self.figure_size)
+        make_plot(plt.gca(), self.ase_geom, self.spin_density)
+        plt.show()
 
         print("---")
         print("eigenvalues:")
@@ -426,15 +472,24 @@ class MeanFieldHubbardModel:
 
             if i_mo < 0 or i_mo > len(self.evecs[0])-1:
                 continue
-            
-            titles = [
-                "mo%d α %s, en: %.2f" % (i_mo, orb_label(i_mo, self.num_spin_el[0]), self.evals[0][i_mo]),
-                "mo%d β %s, en: %.2f" % (i_mo, orb_label(i_mo, self.num_spin_el[1]), self.evals[1][i_mo]),
-            ]
-            make_plot(self.figure_size, self.ase_geom, [self.evecs[0][i_mo], self.evecs[1][i_mo]], title_list=titles)
+
+            fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(3*self.figure_size[0], self.figure_size[1]))
+
+            title1 = "mo%d α %s, en: %.2f" % (i_mo, orb_label(i_mo, self.num_spin_el[0]), self.evals[0][i_mo])
+            make_plot(axs[0], self.ase_geom, self.evecs[0][i_mo], title1)
+
+            title2 = "mo%d β %s, en: %.2f" % (i_mo, orb_label(i_mo, self.num_spin_el[1]), self.evals[1][i_mo])
+            make_plot(axs[1], self.ase_geom, self.evecs[1][i_mo], title2)
+
+            title3 = "sts h=%.1f, en: %.2f" % (sts_h, self.evals[0][i_mo])
+            self.plot_sts_map(axs[2], self.evals[0][i_mo], z=sts_h, title=title3)
+
+            plt.show()
 
     def plot_orbital(self, mo_index, spin=0):
         title = "mo%d s%d %s, en: %.2f" % (
             mo_index, spin, orb_label(mo_index, self.num_spin_el[spin]), self.evals[spin][mo_index])
-        make_plot(self.figure_size, self.ase_geom, [self.evecs[spin][mo_index]], title_list=[title])
+        plt.figure(figsize=self.figure_size)
+        make_plot(plt.gca(), self.ase_geom, self.evecs[spin][mo_index], title=title)
+        plt.show()
 
