@@ -435,7 +435,7 @@ class MeanFieldHubbardModel:
                     orb_map = np.zeros((x.shape[0], y.shape[1]), dtype=np.complex)
                     for at, coef in zip(atoms, evc):
                         p = at.position
-                        pz_orb = hydrogen_like_orbital(x-p[0], y-p[1], z-p[2], 2, 1, 0, nuc=1)
+                        pz_orb = hydrogen_like_orbital(x-p[0], y-p[1], z, 2, 1, 0, nuc=1)
                         orb_map += broad_coef*coef*pz_orb
                     final_map += np.abs(orb_map)**2
         
@@ -444,7 +444,7 @@ class MeanFieldHubbardModel:
         ax.set_title(title)
 
 
-    def report(self, num_orb=2, sts_h=3.5):
+    def report(self, num_orb=2, sts_h=3.5, sts_broad=0.05):
 
         print("abs. magnetization: %14.6f" % self.abs_mag)
         print("energy:             %14.6f" % self.energy)
@@ -473,7 +473,7 @@ class MeanFieldHubbardModel:
             if i_mo < 0 or i_mo > len(self.evecs[0])-1:
                 continue
 
-            fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(3*self.figure_size[0], self.figure_size[1]))
+            fig, axs = plt.subplots(nrows=1, ncols=4, figsize=(4*self.figure_size[0], self.figure_size[1]))
 
             title1 = "mo%d α %s, en: %.2f" % (i_mo, orb_label(i_mo, self.num_spin_el[0]), self.evals[0][i_mo])
             make_plot(axs[0], self.ase_geom, self.evecs[0][i_mo], title1)
@@ -482,7 +482,10 @@ class MeanFieldHubbardModel:
             make_plot(axs[1], self.ase_geom, self.evecs[1][i_mo], title2)
 
             title3 = "sts h=%.1f, en: %.2f" % (sts_h, self.evals[0][i_mo])
-            self.plot_sts_map(axs[2], self.evals[0][i_mo], z=sts_h, title=title3)
+            self.plot_sts_map(axs[2], self.evals[0][i_mo], z=sts_h, broadening=sts_broad, title=title3)
+
+            title4 = "sts h=%.1f, en: %.2f" % (sts_h, self.evals[1][i_mo])
+            self.plot_sts_map(axs[3], self.evals[1][i_mo], z=sts_h, broadening=sts_broad, title=title4)
 
             plt.show()
 
