@@ -14,118 +14,6 @@ import ase.neighborlist
 import ase.visualize.plot
 
 ### ------------------------------------------------------------------------------
-### GEOMETRY TOOLS
-### ------------------------------------------------------------------------------
-
-def find_neighbors(geom, cutoff=1.8, depth=1):
-    """
-    geom - ase atoms object
-    depth - up to which order of nearest neighbours to include (e.g. 2 - second nearest)
-    
-    returns:
-    
-    neighbors[i_atom] = [[first_nearest_neighbors], [second_nearest_neighbors], ...]
-    """
-    
-    i_arr, j_arr = ase.neighborlist.neighbor_list('ij', geom, cutoff)
-    
-    neighbors = [[[]] for i in range(len(geom))]
-    already_added = [{i} for i in range(len(geom))]
-    
-    # first nearest neighbors
-    for i_at, j_at in zip(i_arr, j_arr):
-        neighbors[i_at][0].append(j_at)
-        already_added[i_at].add(j_at)
-    
-    # n-th nearest neighbors
-    for d in range(depth-1):
-        
-        # add new lists for new layer
-        for i_at in range(len(neighbors)):
-            neighbors[i_at].append([])
-        
-        for i_at in range(len(neighbors)):
-            
-            # go through the "previous layer" and add the new layer
-            for cur_n in neighbors[i_at][-2]:
-                
-                new_neighbors = set(neighbors[cur_n][0])
-                
-                # add new neighbor only if it's not already added for current atom
-                add_neighbors = new_neighbors.difference(already_added[i_at])
-                
-                #print(cur_n, add_neighbors)
-                
-                already_added[i_at].update(add_neighbors)
-                neighbors[i_at][-1] += add_neighbors
-                
-    return neighbors
-
-### ------------------------------------------------------------------------------
-### PLOTTING TOOLS
-### ------------------------------------------------------------------------------
-
-def visualize_backbone(ax, atoms):
-    i_arr, j_arr = ase.neighborlist.neighbor_list('ij', atoms, 1.8)
-    for i, j in zip(i_arr, j_arr):
-        if i < j:
-            p1 = atoms.positions[i]
-            p2 = atoms.positions[j]
-            ax.plot([p1[0], p2[0]], [p1[1], p2[1]], 'k-', linewidth=3.0, solid_capstyle='round')
-            
-def visualize_evec(ax, atoms, evec):
-    #area = 0.0
-    #vol = 0.0
-    for at, e in zip(atoms, evec):
-        p = at.position
-        
-        mod = 1.6*np.abs(e) # normalized area
-        #mod = np.abs(e)**(2/3) # normalized vol
-        
-        phase = np.angle(e)/np.pi
-        col = (1.0-phase, 0.0, phase)
-        circ = plt.Circle(p[:2], radius=mod, color=col, zorder=10)
-        ax.add_artist(circ)
-        
-        #area += np.pi*mod**2
-        #vol += 4/3*np.pi*mod**3
-        
-    #print("Norm: %.6f" % np.abs(np.sum(evec**2)))
-    #print("Area: %.6f"%area)
-    #print(" Vol: %.6f"%vol)
-
-def make_plot(ax, atoms, data, title=None, filename=None):
-
-    ax.set_aspect('equal')
-    visualize_backbone(ax, atoms)
-    visualize_evec(ax, atoms, data)
-    ax.axis('off')
-    xmin = np.min(atoms.positions[:, 0])-2.0
-    xmax = np.max(atoms.positions[:, 0])+2.0
-    ymin = np.min(atoms.positions[:, 1])-2.0
-    ymax = np.max(atoms.positions[:, 1])+2.0
-    ax.set_xlim([xmin, xmax])
-    ax.set_ylim([ymin, ymax])
-    ax.set_title(title)
-
-    if filename is not None:
-        plt.savefig('%s.png' % filename, dpi=300, bbox_inches='tight')
-        plt.savefig('%s.pdf' % filename, bbox_inches='tight')
-    
-def orb_label(i_mo, n_el):
-    i_rel = i_mo - n_el + 1
-    if i_rel < 0:
-        label = "HOMO%d"%i_rel
-    elif i_rel == 0:
-        label = "HOMO"
-    elif i_rel == 1:
-        label = "LUMO"
-    else:
-        label = "LUMO+%d"%(i_rel-1)
-    return label
-
-
-### ------------------------------------------------------------------------------
 ### GRID ORBITALS
 ### ------------------------------------------------------------------------------
 
@@ -170,7 +58,9 @@ class MeanFieldHubbardModel:
 
         self.spin_guess = self._load_spin_guess(self.ase_geom)
         
-        self.neighbors = find_neighbors(self.ase_geom, 1.8, len(self.t_list))
+        self.neighbor_list = ase.neighborlist.neighbor_list('ij', self.ase_geom, 1.8)
+
+        self.neighbors = self._find_neighbors(self.ase_geom, depth=len(self.t_list))
 
         self._set_up_tb_model()
 
@@ -179,11 +69,126 @@ class MeanFieldHubbardModel:
 
         self.evals = None
         self.evecs = None
+    
+    ### ------------------------------------------------------------------------------
+    ### GEOMETRY TOOLS
+    ### ------------------------------------------------------------------------------
 
     def _atoms_extent(self, ase_geom):
         x_extent = np.ptp(ase_geom.positions[:, 0]) + 1.0
         y_extent = np.ptp(ase_geom.positions[:, 1]) + 1.0
         return np.array([x_extent, y_extent])
+
+    def _find_neighbors(self, geom, depth=1):
+        """
+        geom - ase atoms object
+        depth - up to which order of nearest neighbours to include (e.g. 2 - second nearest)
+        
+        returns:
+        
+        neighbors[i_atom] = [[first_nearest_neighbors], [second_nearest_neighbors], ...]
+        """
+
+        i_arr, j_arr = self.neighbor_list
+        
+        neighbors = [[[]] for i in range(len(geom))]
+        already_added = [{i} for i in range(len(geom))]
+        
+        # first nearest neighbors
+        for i_at, j_at in zip(i_arr, j_arr):
+            neighbors[i_at][0].append(j_at)
+            already_added[i_at].add(j_at)
+        
+        # n-th nearest neighbors
+        for d in range(depth-1):
+            
+            # add new lists for new layer
+            for i_at in range(len(neighbors)):
+                neighbors[i_at].append([])
+            
+            for i_at in range(len(neighbors)):
+                
+                # go through the "previous layer" and add the new layer
+                for cur_n in neighbors[i_at][-2]:
+                    
+                    new_neighbors = set(neighbors[cur_n][0])
+                    
+                    # add new neighbor only if it's not already added for current atom
+                    add_neighbors = new_neighbors.difference(already_added[i_at])
+                    
+                    #print(cur_n, add_neighbors)
+                    
+                    already_added[i_at].update(add_neighbors)
+                    neighbors[i_at][-1] += add_neighbors
+                    
+        return neighbors
+
+    ### ------------------------------------------------------------------------------
+    ### PLOTTING TOOLS
+    ### ------------------------------------------------------------------------------
+
+    def visualize_backbone(self, ax, atoms):
+        i_arr, j_arr = self.neighbor_list
+        for i, j in zip(i_arr, j_arr):
+            if i < j:
+                p1 = atoms.positions[i]
+                p2 = atoms.positions[j]
+                ax.plot([p1[0], p2[0]], [p1[1], p2[1]], 'k-', linewidth=3.0, solid_capstyle='round')
+                
+    def visualize_evec(self, ax, atoms, evec):
+        #area = 0.0
+        #vol = 0.0
+        for at, e in zip(atoms, evec):
+            p = at.position
+            
+            mod = 1.6*np.abs(e) # normalized area
+            #mod = np.abs(e)**(2/3) # normalized vol
+            
+            phase = np.angle(e)/np.pi
+            col = (1.0-phase, 0.0, phase)
+            circ = plt.Circle(p[:2], radius=mod, color=col, zorder=10)
+            ax.add_artist(circ)
+            
+            #area += np.pi*mod**2
+            #vol += 4/3*np.pi*mod**3
+            
+        #print("Norm: %.6f" % np.abs(np.sum(evec**2)))
+        #print("Area: %.6f"%area)
+        #print(" Vol: %.6f"%vol)
+
+    def make_plot(self, ax, atoms, data, title=None, filename=None):
+
+        ax.set_aspect('equal')
+        self.visualize_backbone(ax, atoms)
+        self.visualize_evec(ax, atoms, data)
+        ax.axis('off')
+        xmin = np.min(atoms.positions[:, 0])-2.0
+        xmax = np.max(atoms.positions[:, 0])+2.0
+        ymin = np.min(atoms.positions[:, 1])-2.0
+        ymax = np.max(atoms.positions[:, 1])+2.0
+        ax.set_xlim([xmin, xmax])
+        ax.set_ylim([ymin, ymax])
+        ax.set_title(title)
+
+        if filename is not None:
+            plt.savefig('%s.png' % filename, dpi=300, bbox_inches='tight')
+            plt.savefig('%s.pdf' % filename, bbox_inches='tight')
+        
+    def orb_label(self, i_mo, n_el):
+        i_rel = i_mo - n_el + 1
+        if i_rel < 0:
+            label = "HOMO%d"%i_rel
+        elif i_rel == 0:
+            label = "HOMO"
+        elif i_rel == 1:
+            label = "LUMO"
+        else:
+            label = "LUMO+%d"%(i_rel-1)
+        return label
+
+    ### ------------------------------------------------------------------------------
+    ### TB routines
+    ### ------------------------------------------------------------------------------
 
     def _load_spin_guess(self, ase_geom, flip_alpha_majority=True):
         """
@@ -251,7 +256,7 @@ class MeanFieldHubbardModel:
 
     def visualize_spin_guess(self):
         plt.figure(figsize=self.figure_size)
-        make_plot(plt.gca(), self.ase_geom, 0.5*(self.spin_guess[:, 0] - self.spin_guess[:, 1]))
+        self.make_plot(plt.gca(), self.ase_geom, 0.5*(self.spin_guess[:, 0] - self.spin_guess[:, 1]))
         plt.show()
         
     def print_parameters(self):
@@ -451,7 +456,7 @@ class MeanFieldHubbardModel:
         print("---")
         print("spin density:")
         plt.figure(figsize=self.figure_size)
-        make_plot(plt.gca(), self.ase_geom, self.spin_density)
+        self.make_plot(plt.gca(), self.ase_geom, self.spin_density)
         plt.show()
 
         print("---")
@@ -475,11 +480,11 @@ class MeanFieldHubbardModel:
 
             fig, axs = plt.subplots(nrows=1, ncols=4, figsize=(4*self.figure_size[0], self.figure_size[1]))
 
-            title1 = "mo%d α %s, en: %.2f" % (i_mo, orb_label(i_mo, self.num_spin_el[0]), self.evals[0][i_mo])
-            make_plot(axs[0], self.ase_geom, self.evecs[0][i_mo], title1)
+            title1 = "mo%d α %s, en: %.2f" % (i_mo, self.orb_label(i_mo, self.num_spin_el[0]), self.evals[0][i_mo])
+            self.make_plot(axs[0], self.ase_geom, self.evecs[0][i_mo], title1)
 
-            title2 = "mo%d β %s, en: %.2f" % (i_mo, orb_label(i_mo, self.num_spin_el[1]), self.evals[1][i_mo])
-            make_plot(axs[1], self.ase_geom, self.evecs[1][i_mo], title2)
+            title2 = "mo%d β %s, en: %.2f" % (i_mo, self.orb_label(i_mo, self.num_spin_el[1]), self.evals[1][i_mo])
+            self.make_plot(axs[1], self.ase_geom, self.evecs[1][i_mo], title2)
 
             title3 = "sts h=%.1f, en: %.2f" % (sts_h, self.evals[0][i_mo])
             self.plot_sts_map(axs[2], self.evals[0][i_mo], z=sts_h, broadening=sts_broad, title=title3)
@@ -491,8 +496,8 @@ class MeanFieldHubbardModel:
 
     def plot_orbital(self, mo_index, spin=0):
         title = "mo%d s%d %s, en: %.2f" % (
-            mo_index, spin, orb_label(mo_index, self.num_spin_el[spin]), self.evals[spin][mo_index])
+            mo_index, spin, self.orb_label(mo_index, self.num_spin_el[spin]), self.evals[spin][mo_index])
         plt.figure(figsize=self.figure_size)
-        make_plot(plt.gca(), self.ase_geom, self.evecs[spin][mo_index], title=title)
+        self.make_plot(plt.gca(), self.ase_geom, self.evecs[spin][mo_index], title=title)
         plt.show()
 
