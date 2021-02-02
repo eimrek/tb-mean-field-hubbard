@@ -304,7 +304,7 @@ class MeanFieldHubbardModel:
                         orb_map += broad_coef*coef*pz_orb
                     final_map += np.abs(orb_map)**2
         
-        ax.imshow(final_map.T, origin='lower', cmap='gray')
+        ax.imshow(final_map.T, origin='lower', cmap='seismic')
         ax.axis('off')
         ax.set_title(title)
 
