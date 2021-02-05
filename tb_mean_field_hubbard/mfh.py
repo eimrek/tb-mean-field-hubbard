@@ -37,6 +37,7 @@ class MeanFieldHubbardModel:
 
         self.neighbors = utils.find_neighbors(self.ase_geom, self.neighbor_list, depth=len(self.t_list))
 
+        self.num_spin_el = None
         self._set_up_tb_model()
 
         self.absmag_iter = None
@@ -281,7 +282,9 @@ class MeanFieldHubbardModel:
             plt.savefig(filename, dpi=300, bbox_inches='tight')
         plt.show()
         
-    def plot_sts_map(self, ax, energy, z=6.0, broadening=0.05, edge_space=5.0, dx=0.1, title=None):
+    def plot_sts_map(
+            self, ax, energy, z=6.0, broadening=0.05, edge_space=5.0,
+            dx=0.1, title=None, cmap='seismic'):
     
         atoms = self.ase_geom
         xmin = np.min(atoms.positions[:, 0])-edge_space
@@ -304,7 +307,7 @@ class MeanFieldHubbardModel:
                         orb_map += broad_coef*coef*pz_orb
                     final_map += np.abs(orb_map)**2
         
-        ax.imshow(final_map.T, origin='lower', cmap='seismic')
+        ax.imshow(final_map.T, origin='lower', cmap=cmap)
         ax.axis('off')
         ax.set_title(title)
 
