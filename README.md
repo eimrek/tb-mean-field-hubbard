@@ -9,7 +9,6 @@ The modelled Hamiltonian is the following:
 
 where c<sup>†</sup>, c and n are respectively the creation, annihiliation and number operators, t is the hopping integral and U denotes the on-site Coulomb repulsion.
 
-Example jupyter notebook `mfh.ipynb` is provided that performs the calculation for the Clar's goblet molecule.
 
 Python dependencies:
 * Standard python libraries: `numpy`, `matplotlib`
@@ -31,3 +30,12 @@ pip install -e .
 ```
 
 Option 3) If dependencies are already installed, then simply downloading the code and executing the notebook will work.
+
+### Example usage
+
+Example jupyter notebook `mfh.ipynb` is provided that performs the calculation for the Clar's goblet molecule. The geometry is read from a `xyz` file.
+
+The following image demonstrates a selection of the output for the calculation for parameters `t=2.7` and `U=3.0` (both in electronvolts).
+
+<p align="center"><img class="marginauto" src="res/example-output.png" width="700"></p>
+
