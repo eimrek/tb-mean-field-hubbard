@@ -9,33 +9,36 @@ The modelled Hamiltonian is the following:
 
 where c<sup>†</sup>, c and n are respectively the creation, annihiliation and number operators, t is the hopping integral and U denotes the on-site Coulomb repulsion.
 
+### System requirements
 
-Python dependencies:
-* Standard python libraries: `numpy`, `matplotlib`
-* Atomistic simulation environment: `ase`
-* Python Tight Binding: `pythtb`
+Python 3 (tested with 3.6 - 3.9) environment is required with the following libraries (parenthesis indicate tested versions; but the library should work with all recent versions):
+* Standard python libraries: `numpy` (1.17.2), `scipy` (1.3.1), `matplotlib` (3.2.1)
+* Atomistic simulation environment: `ase` (3.18.1)
+* Python Tight Binding: `pythtb` (1.7.2)
 
 ### Installation
 
-Option 1) To install the dependencies and the library, one can use
-```
-pip install git+https://github.com/eimrek/tb-mean-field-hubbard.git#egg=tb-mean-field-hubbard
-```
-
-Option 2) To also have access to the code and the notebook, it's better to call instead
+Option 1) To install the dependencies and the library, and to have access to the code and the notebook
 ```
 git clone https://github.com/eimrek/tb-mean-field-hubbard.git
 cd tb-mean-field-hubbard
 pip install -e .
 ```
 
+Option 2) To just install the dependencies and the library
+```
+pip install git+https://github.com/eimrek/tb-mean-field-hubbard.git#egg=tb-mean-field-hubbard
+```
+
 Option 3) If dependencies are already installed, then simply downloading the code and executing the notebook will work.
+
+In all cases, on a normal desktop computer, installation of the python dependencies can take some minutes, while the `tb-mean-field-hubbard` should install in seconds.
 
 ### Example usage
 
-Example jupyter notebook `mfh.ipynb` is provided that performs the calculation for the Clar's goblet molecule. The geometry is read from a `xyz` file.
-
+Example jupyter notebook `mfh.ipynb` is provided that performs the calculation for the Clar's goblet molecule. The geometry is read from a `xyz` file. The whole notebook should run in a matter of seconds on a normal desktop computer.
 The following image demonstrates a selection of the output for the calculation for parameters `t=2.7` and `U=3.0` (both in electronvolts).
 
 <p align="center"><img class="marginauto" src="res/example-output.png" width="700"></p>
 
+In addition to the structure of Clar's goblet, the `geom/` folder contains input geometries for triangulene, 4- and 5-rhombene, and several other systems. 
