@@ -1,2 +1,1 @@
-
 from .mfh import MeanFieldHubbardModel

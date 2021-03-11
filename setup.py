@@ -25,5 +25,5 @@ setuptools.setup(
         "matplotlib",
         "ase",
         "pythtb",
-    ]
+    ],
 )
