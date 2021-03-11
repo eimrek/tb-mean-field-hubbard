@@ -11,6 +11,8 @@ import ase.neighborlist
 
 import pythtb
 
+import sys
+
 from . import utils
 
 ### ------------------------------------------------------------------------------
@@ -281,11 +283,9 @@ class MeanFieldHubbardModel:
         if filename is not None:
             plt.savefig(filename, dpi=300, bbox_inches='tight')
         plt.show()
-        
-    def plot_sts_map(
-            self, ax, energy, z=6.0, broadening=0.05, edge_space=5.0,
-            dx=0.1, title=None, cmap='seismic'):
     
+    def calc_orb_ldos_map(self, i_spin, i_orb, h=6.0, edge_space=5.0, dx=0.1):
+
         atoms = self.ase_geom
         xmin = np.min(atoms.positions[:, 0])-edge_space
         xmax = np.max(atoms.positions[:, 0])+edge_space
@@ -294,18 +294,36 @@ class MeanFieldHubbardModel:
         
         # define grid
         x,y = np.ogrid[xmin:xmax:dx,ymin:ymax:dx]
-        final_map = np.zeros((x.shape[0], y.shape[1]))
+
+        evc = self.evecs[i_spin][i_orb]
+        orb_map = np.zeros((x.shape[0], y.shape[1]), dtype=np.complex)
+        for at, coef in zip(self.ase_geom, evc):
+            p = at.position
+            pz_orb = utils.hydrogen_like_orbital(x-p[0], y-p[1], h, 2, 1, 0, nuc=1)
+            orb_map += coef*pz_orb
         
+        return np.abs(orb_map) ** 2
+
+    def calc_sts_map(self, energy, broadening=0.05, h=6.0, edge_space=5.0, dx=0.1):
+
+        final_map = None
+
         for i_spin in range(2):
-            for evl, evc in zip(self.evals[i_spin], self.evecs[i_spin]):
+            for i_orb, evl in enumerate(self.evals[i_spin]):
                 if np.abs(energy-evl) <= 3.0 * broadening:
                     broad_coef = utils.gaussian(energy-evl, broadening)
-                    orb_map = np.zeros((x.shape[0], y.shape[1]), dtype=np.complex)
-                    for at, coef in zip(atoms, evc):
-                        p = at.position
-                        pz_orb = utils.hydrogen_like_orbital(x-p[0], y-p[1], z, 2, 1, 0, nuc=1)
-                        orb_map += broad_coef*coef*pz_orb
-                    final_map += np.abs(orb_map)**2
+                    orb_ldos_map = self.calc_orb_ldos_map(i_spin, i_orb, h, edge_space, dx)
+                    if final_map is None:
+                        final_map = broad_coef * orb_ldos_map
+                    else:
+                        final_map += broad_coef * orb_ldos_map
+        return final_map
+        
+    def plot_sts_map(
+            self, ax, energy, broadening=0.05, h=6.0, edge_space=5.0,
+            dx=0.1, title=None, cmap='seismic'):
+    
+        final_map = self.calc_sts_map(energy, broadening, h, edge_space, dx)
         
         ax.imshow(final_map.T, origin='lower', cmap=cmap)
         ax.axis('off')
@@ -350,10 +368,10 @@ class MeanFieldHubbardModel:
             utils.make_plot(axs[1], self.ase_geom, self.neighbor_list, self.evecs[1][i_mo], title2)
 
             title3 = "sts h=%.1f, en: %.2f" % (sts_h, self.evals[0][i_mo])
-            self.plot_sts_map(axs[2], self.evals[0][i_mo], z=sts_h, broadening=sts_broad, title=title3)
+            self.plot_sts_map(axs[2], self.evals[0][i_mo], broadening=sts_broad, h=sts_h, title=title3)
 
             title4 = "sts h=%.1f, en: %.2f" % (sts_h, self.evals[1][i_mo])
-            self.plot_sts_map(axs[3], self.evals[1][i_mo], z=sts_h, broadening=sts_broad, title=title4)
+            self.plot_sts_map(axs[3], self.evals[1][i_mo], broadening=sts_broad, h=sts_h, title=title4)
 
             plt.show()
 
