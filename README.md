@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/314531046.svg)](https://zenodo.org/badge/latestdoi/314531046)
+
 # tb-mean-field-hubbard 
 
 Python library to perform tight-binding mean field Hubbard calculations on the conjugated π-networks of organic systems.
