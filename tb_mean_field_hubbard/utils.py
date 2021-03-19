@@ -82,7 +82,7 @@ def visualize_evec(ax, atoms, evec):
         mod = 1.6 * np.abs(e)  # normalized area
         #mod = np.abs(e)**(2/3) # normalized vol
 
-        phase = np.angle(e) / np.pi
+        phase = np.abs(np.angle(e) / np.pi)
         col = (1.0 - phase, 0.0, phase)
         circ = plt.Circle(p[:2], radius=mod, color=col, zorder=10)
         ax.add_artist(circ)
