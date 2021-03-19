@@ -20,7 +20,7 @@ from . import utils
 
 
 class MeanFieldHubbardModel:
-    def __init__(self, ase_geom, t_list=[-2.7], charge=0, multiplicity=1):
+    def __init__(self, ase_geom, t_list=[-2.7], charge=0, multiplicity=1, bond_cutoff=1.8):
 
         self.t_list = t_list
         self.multiplicity = multiplicity
@@ -34,7 +34,7 @@ class MeanFieldHubbardModel:
 
         self.spin_guess = self._load_spin_guess(self.ase_geom)
 
-        self.neighbor_list = ase.neighborlist.neighbor_list('ij', self.ase_geom, 1.8)
+        self.neighbor_list = ase.neighborlist.neighbor_list('ij', self.ase_geom, bond_cutoff)
 
         self.neighbors = utils.find_neighbors(self.ase_geom, self.neighbor_list, depth=len(self.t_list))
 
