@@ -277,7 +277,7 @@ class MeanFieldHubbardModel:
             plt.savefig(filename, dpi=300, bbox_inches='tight')
         plt.show()
 
-    def calc_orb_ldos_map(self, i_spin, i_orb, h=6.0, edge_space=5.0, dx=0.1):
+    def calc_orb_ldos_map(self, i_spin, i_orb, h=6.0, edge_space=5.0, dx=0.1, z_eff=1):
 
         atoms = self.ase_geom
         xmin = np.min(atoms.positions[:, 0]) - edge_space
@@ -286,18 +286,20 @@ class MeanFieldHubbardModel:
         ymax = np.max(atoms.positions[:, 1]) + edge_space
 
         # define grid
-        x, y = np.ogrid[xmin:xmax:dx, ymin:ymax:dx]
+        x_arr = np.arange(xmin, xmax, dx)
+        y_arr = np.arange(ymin, ymax, dx)
 
         evc = self.evecs[i_spin][i_orb]
-        orb_map = np.zeros((x.shape[0], y.shape[1]), dtype=np.complex)
+        orb_map = np.zeros((len(x_arr), len(y_arr)), dtype=np.complex)
         for at, coef in zip(self.ase_geom, evc):
             p = at.position
-            pz_orb = utils.hydrogen_like_orbital(x - p[0], y - p[1], h, 2, 1, 0, nuc=1)
-            orb_map += coef * pz_orb
+            local_i, local_grid = utils.get_local_grid(x_arr, y_arr, p, cutoff=1.2 * h + 4.0)
+            pz_orb = utils.carbon_2pz_slater(local_grid[0] - p[0], local_grid[1] - p[1], h, z_eff)
+            orb_map[local_i[0]:local_i[1], local_i[2]:local_i[3]] += coef * pz_orb
 
         return np.abs(orb_map)**2
 
-    def calc_sts_map(self, energy, broadening=0.05, h=6.0, edge_space=5.0, dx=0.1):
+    def calc_sts_map(self, energy, broadening=0.05, h=6.0, edge_space=5.0, dx=0.1, z_eff=1):
 
         final_map = None
 
@@ -305,16 +307,16 @@ class MeanFieldHubbardModel:
             for i_orb, evl in enumerate(self.evals[i_spin]):
                 if np.abs(energy - evl) <= 3.0 * broadening:
                     broad_coef = utils.gaussian(energy - evl, broadening)
-                    orb_ldos_map = self.calc_orb_ldos_map(i_spin, i_orb, h, edge_space, dx)
+                    orb_ldos_map = self.calc_orb_ldos_map(i_spin, i_orb, h, edge_space, dx, z_eff)
                     if final_map is None:
                         final_map = broad_coef * orb_ldos_map
                     else:
                         final_map += broad_coef * orb_ldos_map
         return final_map
 
-    def plot_sts_map(self, ax, energy, broadening=0.05, h=6.0, edge_space=5.0, dx=0.1, title=None, cmap='seismic'):
+    def plot_sts_map(self, ax, energy, broadening=0.05, h=6.0, edge_space=5.0, dx=0.1, title=None, cmap='seismic', z_eff=1):
 
-        final_map = self.calc_sts_map(energy, broadening, h, edge_space, dx)
+        final_map = self.calc_sts_map(energy, broadening, h, edge_space, dx, z_eff)
 
         ax.imshow(final_map.T, origin='lower', cmap=cmap)
         ax.axis('off')

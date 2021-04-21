@@ -118,27 +118,68 @@ def make_plot(ax, atoms, neighbor_list, data, title=None, filename=None):
 ### GRID ORBITALS
 ### ------------------------------------------------------------------------------
 
+def get_local_grid(x_arr, y_arr, p, cutoff=10.0):
+    """Method that selects a local grid around an atom
+
+    Args:
+        x_arr: global x array
+        y_arr: global y array
+        p: atomic position
+        cutoff (float, optional): extent of local grid in all directions. Defaults to 5.0.
+    """
+
+    x_min_i = np.abs(x_arr - p[0] + cutoff).argmin()
+    x_max_i = np.abs(x_arr - p[0] - cutoff).argmin()
+    y_min_i = np.abs(y_arr - p[1] + cutoff).argmin()
+    y_max_i = np.abs(y_arr - p[1] - cutoff).argmin()
+
+    local_x, local_y = np.meshgrid(x_arr[x_min_i:x_max_i], y_arr[y_min_i:y_max_i], indexing='ij')
+
+    return [x_min_i, x_max_i, y_min_i, y_max_i], [local_x, local_y]
+
 
 def hydrogen_like_orbital(x, y, z, n, l, m, nuc=1):
     # https://en.wikipedia.org/wiki/Hydrogen-like_atom#Non-relativistic_wavefunction_and_energy
 
-    r = lambda x, y, z: np.sqrt(x**2 + y**2 + z**2)
-    theta = lambda x, y, z: np.arccos(z / (r(x, y, z) + 1e-20))
-    phi = lambda x, y, z: np.arctan(y / (x + 1e-20))
+    r_grid = np.sqrt(x**2 + y**2 + z**2)
+    theta_grid = np.arccos(z / (r_grid + 1e-20))
+    phi_grid = np.arctan(y / (x + 1e-20))
 
     a0 = 0.529177  # Bohr radius in angstrom
 
     def radial(r, n, l):
         norm_factor = np.sqrt(
             (2 * nuc / (n * a0))**3 * np.math.factorial(n - l - 1) / (2 * n * np.math.factorial(n + l)))
-        rad = np.exp(-nuc * r /
-                     (n * a0)) * (2 * nuc * r /
-                                  (n * a0))**l * scipy.special.genlaguerre(n - l - 1, 2 * l + 1)(2 * nuc * r / (n * a0))
+        arg = 2 * nuc * r / (n * a0)
+        rad = np.exp(-0.5 * arg) * arg**l * scipy.special.genlaguerre(n - l - 1, 2 * l + 1)(arg)
         return norm_factor * rad
 
     #pylint: disable=no-member
-    orbital = radial(r(x, y, z), n, l) * scipy.special.sph_harm(m, l, phi(x, y, z), theta(x, y, z))
+    orbital = radial(r_grid, n, l) * scipy.special.sph_harm(m, l, phi_grid, theta_grid)
     return orbital
+
+
+def carbon_2pz_slater(x, y, z, z_eff=1):
+    """Carbon 2pz slater orbital
+
+    z_eff determines the effective nuclear charge interacting with the pz orbital
+    Options:
+
+    z_eff = 1
+        This corresponds to a hydrogen-like 2pz orbital
+        it matches best with DFT reference and is thus the default
+
+    z_eff = 2.55
+        This is the value calculated by Slater's rules
+        https://en.wikipedia.org/wiki/Slater%27s_rules
+
+    z_eff = 3.25
+        This value matches with https://doi.org/10.1038/s41557-019-0316-8
+    
+    """
+    r_grid = np.sqrt(x**2 + y**2 + z**2)  # angstrom
+    a0 = 0.529177  # Bohr radius in angstrom
+    return z * np.exp(-z_eff * r_grid * (2 * a0))
 
 
 def gaussian(x, fwhm):
