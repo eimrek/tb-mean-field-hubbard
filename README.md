@@ -41,6 +41,6 @@ In all cases, on a normal desktop computer, installation of the python dependenc
 Example jupyter notebook `mfh.ipynb` is provided that performs the calculation for the Clar's goblet molecule. The geometry is read from a `xyz` file. The whole notebook should run in a matter of seconds on a normal desktop computer.
 The following image demonstrates a selection of the output for the calculation for parameters `t=2.7` and `U=3.0` (both in electronvolts).
 
-<p align="center"><img class="marginauto" src="res/example-output.png" width="700"></p>
+<p align="center"><img class="marginauto" src="misc/example-output.png" width="700"></p>
 
 In addition to the structure of Clar's goblet, the `geom/` folder contains input geometries for triangulene, 4- and 5-rhombene, and several other systems. 
