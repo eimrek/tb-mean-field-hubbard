@@ -118,6 +118,7 @@ def make_plot(ax, atoms, neighbor_list, data, title=None, filename=None):
 ### GRID ORBITALS
 ### ------------------------------------------------------------------------------
 
+
 def get_local_grid(x_arr, y_arr, p, cutoff=10.0):
     """Method that selects a local grid around an atom
 

@@ -314,7 +314,16 @@ class MeanFieldHubbardModel:
                         final_map += broad_coef * orb_ldos_map
         return final_map
 
-    def plot_sts_map(self, ax, energy, broadening=0.05, h=6.0, edge_space=5.0, dx=0.1, title=None, cmap='seismic', z_eff=1):
+    def plot_sts_map(self,
+                     ax,
+                     energy,
+                     broadening=0.05,
+                     h=6.0,
+                     edge_space=5.0,
+                     dx=0.1,
+                     title=None,
+                     cmap='seismic',
+                     z_eff=1):
 
         final_map = self.calc_sts_map(energy, broadening, h, edge_space, dx, z_eff)
 
