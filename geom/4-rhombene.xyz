@@ -1,5 +1,5 @@
 48
-Lattice="24.0 0.0 0.0 0.0 18.0 0.0 0.0 0.0 8.0" Properties=species:S:1:pos:R:3:tags:I:1 pbc="F F F"
+Properties=species:S:1:pos:R:3:tags:I:1 pbc="F F F"
 C       0.85595196      -0.99478892       1.22975608        0 
 C       1.56595196       0.23496715       1.22975607        1 
 C       1.56595196      -2.22454499       1.22975608        1 
