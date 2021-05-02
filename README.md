@@ -1,3 +1,4 @@
+[![PyPI version](https://badge.fury.io/py/tb-mean-field-hubbard.svg)](https://badge.fury.io/py/tb-mean-field-hubbard)
 [![DOI](https://zenodo.org/badge/314531046.svg)](https://zenodo.org/badge/latestdoi/314531046)
 
 # tb-mean-field-hubbard 
