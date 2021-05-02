@@ -21,21 +21,21 @@ Python 3 (tested with 3.6 - 3.9) environment is required with the following libr
 
 ### Installation
 
-Option 1) To install the dependencies and the library, and to have access to the code and the notebook
+Option 1) Install the library and dependencies hosted on PyPI:
+
+```
+pip install tb-mean-field-hubbard
+```
+
+Option 2) Manual installation, such that you have direct access to the code and the notebook:
+
 ```
 git clone https://github.com/eimrek/tb-mean-field-hubbard.git
 cd tb-mean-field-hubbard
 pip install -e .
 ```
 
-Option 2) To just install the dependencies and the library
-```
-pip install git+https://github.com/eimrek/tb-mean-field-hubbard.git#egg=tb-mean-field-hubbard
-```
-
-Option 3) If dependencies are already installed, then simply downloading the code and executing the notebook will work.
-
-In all cases, on a normal desktop computer, installation of the python dependencies can take some minutes, while the `tb-mean-field-hubbard` should install in seconds.
+On a normal desktop computer, installation of the python dependencies can take some minutes, while the `tb-mean-field-hubbard` should install in seconds.
 
 ### Example usage
 
