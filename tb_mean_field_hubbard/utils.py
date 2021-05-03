@@ -8,10 +8,45 @@ import matplotlib.pyplot as plt
 ### ------------------------------------------------------------------------------
 
 
-def atoms_extent(ase_geom):
-    x_extent = np.ptp(ase_geom.positions[:, 0]) + 1.0
-    y_extent = np.ptp(ase_geom.positions[:, 1]) + 1.0
-    return np.array([x_extent, y_extent])
+def atoms_extent(atoms):
+    extent = np.ptp(atoms.positions, axis=0)
+    return extent
+
+
+def scale_atoms(atoms, factor):
+    cell_defined = True
+    if atoms.cell is None or (atoms.cell == 0.0).all():
+        cell_defined = False
+        atoms.cell = np.diag(atoms_extent(atoms))
+    scaled_cell = atoms.cell * factor
+    atoms.set_cell(scaled_cell, scale_atoms=True)
+    if not cell_defined:
+        atoms.cell = None
+
+
+def find_scaling_factor(atoms, cc_bond=1.42):
+    # Calculate all atom-atom distances.
+    c_atoms = [a for a in atoms if a.symbol[0] == "C"]
+    n_atoms = len(c_atoms)
+    dists = np.zeros([n_atoms, n_atoms])
+    for i, atom_a in enumerate(c_atoms):
+        for j, atom_b in enumerate(c_atoms):
+            dists[i, j] = np.linalg.norm(atom_a.position - atom_b.position)
+
+    # Find bond distances to closest neighbor.
+    dists += np.diag([np.inf] * n_atoms)  # Don't consider diagonal.
+    bonds = np.amin(dists, axis=1)
+
+    # Average bond distance.
+    avg_bond = np.mean(bonds)
+
+    # Scale box to match equilibrium carbon-carbon bond distance.
+    return cc_bond / avg_bond
+
+
+def scale_to_cc_bond_length(atoms, cc_bond=1.42):
+    factor = find_scaling_factor(atoms, cc_bond=cc_bond)
+    scale_atoms(atoms, factor)
 
 
 def find_neighbors(geom, neighbor_list, depth=1):

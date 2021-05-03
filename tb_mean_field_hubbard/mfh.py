@@ -20,7 +20,7 @@ from . import utils
 
 
 class MeanFieldHubbardModel:
-    def __init__(self, ase_geom, t_list=[-2.7], charge=0, multiplicity=1, bond_cutoff=1.8):
+    def __init__(self, ase_geom, t_list=[2.7], charge=0, multiplicity=1, bond_cutoff=1.8):
 
         self.t_list = t_list
         self.multiplicity = multiplicity
@@ -29,7 +29,7 @@ class MeanFieldHubbardModel:
         self.ase_geom = ase_geom
         self.num_atoms = len(ase_geom)
 
-        self.figure_size = utils.atoms_extent(self.ase_geom) / 4.0
+        self.figure_size = (utils.atoms_extent(self.ase_geom)[:2] + 1.0) / 4.0
         self.figure_size[0] += 2.5
 
         self.spin_guess = self._load_spin_guess(self.ase_geom)
