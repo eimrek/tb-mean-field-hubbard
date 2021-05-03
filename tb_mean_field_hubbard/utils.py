@@ -216,7 +216,7 @@ def carbon_2pz_slater(x, y, z, z_eff=1):
     """
     r_grid = np.sqrt(x**2 + y**2 + z**2)  # angstrom
     a0 = 0.529177  # Bohr radius in angstrom
-    return z * np.exp(-z_eff * r_grid * (2 * a0))
+    return z * np.exp(-z_eff * r_grid / (2 * a0))
 
 
 def gaussian(x, fwhm):
