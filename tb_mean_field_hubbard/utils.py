@@ -24,28 +24,29 @@ def scale_atoms(atoms, factor):
         atoms.cell = None
 
 
-def find_scaling_factor(atoms, cc_bond=1.42):
-    # Calculate all atom-atom distances.
+def get_distance_matrix(atoms):
+    n_atoms = len(atoms)
+    dists = np.zeros([n_atoms, n_atoms])
+    for i, atom_a in enumerate(atoms):
+        for j, atom_b in enumerate(atoms):
+            dists[i, j] = np.linalg.norm(atom_a.position - atom_b.position)
+    return dists
+
+
+def get_cc_bond_len(atoms):
     c_atoms = [a for a in atoms if a.symbol[0] == "C"]
     n_atoms = len(c_atoms)
-    dists = np.zeros([n_atoms, n_atoms])
-    for i, atom_a in enumerate(c_atoms):
-        for j, atom_b in enumerate(c_atoms):
-            dists[i, j] = np.linalg.norm(atom_a.position - atom_b.position)
-
+    dists = get_distance_matrix(c_atoms)
     # Find bond distances to closest neighbor.
     dists += np.diag([np.inf] * n_atoms)  # Don't consider diagonal.
     bonds = np.amin(dists, axis=1)
-
     # Average bond distance.
     avg_bond = np.mean(bonds)
-
-    # Scale box to match equilibrium carbon-carbon bond distance.
-    return cc_bond / avg_bond
+    return avg_bond
 
 
 def scale_to_cc_bond_length(atoms, cc_bond=1.42):
-    factor = find_scaling_factor(atoms, cc_bond=cc_bond)
+    factor = cc_bond / get_cc_bond_len(atoms)
     scale_atoms(atoms, factor)
 
 
@@ -59,6 +60,9 @@ def find_neighbors(geom, neighbor_list, depth=1):
     neighbors[i_atom] = [[first_nearest_neighbors], [second_nearest_neighbors], ...]
     """
 
+    if depth > 3:
+        raise Exception("Only up to 3rd nearest neighbor hoppings are supported.")
+
     i_arr, j_arr = neighbor_list
 
     neighbors = [[[]] for i in range(len(geom))]
@@ -69,27 +73,48 @@ def find_neighbors(geom, neighbor_list, depth=1):
         neighbors[i_at][0].append(j_at)
         already_added[i_at].add(j_at)
 
-    # n-th nearest neighbors
-    for _d in range(depth - 1):
-
-        # add new lists for new layer
+    if depth >= 2:
+        # second nearest neighbors are just the neighbors of first neighbors
         for i_at in range(len(neighbors)):
+
+            # add new lists for new layer
             neighbors[i_at].append([])
-
-        for i_at in range(len(neighbors)):
 
             # go through the "previous layer" and add the new layer
             for cur_n in neighbors[i_at][-2]:
-
                 new_neighbors = set(neighbors[cur_n][0])
-
                 # add new neighbor only if it's not already added for current atom
                 add_neighbors = new_neighbors.difference(already_added[i_at])
-
-                #print(cur_n, add_neighbors)
-
                 already_added[i_at].update(add_neighbors)
                 neighbors[i_at][-1] += add_neighbors
+
+    if depth >= 3:
+        # topological 3rd nearest neighbors can either be 3rd or 4th NNs in the TB
+        # determine this based on the distance in a pristine graphene lattice,
+        # where the 3rd NN distance is 2*cc and 4th NN distance is 2.65*cc
+
+        dist_matrix = get_distance_matrix(geom)
+        cc_bond = get_cc_bond_len(geom)
+        dist_threshold = 2.32 * cc_bond
+
+        for i_at in range(len(neighbors)):
+
+            # add new lists for the 3rd and 4th layer
+            neighbors[i_at].append([])
+            neighbors[i_at].append([])
+
+            # go through the 2nd layer and fill the new layers
+            for cur_n in neighbors[i_at][-3]:
+                new_neighbors = neighbors[cur_n][0]
+
+                for nn in new_neighbors:
+                    if nn not in already_added[i_at]:
+                        dist = dist_matrix[i_at, nn]
+                        if dist > dist_threshold:
+                            neighbors[i_at][-1].append(nn)
+                        else:
+                            neighbors[i_at][-2].append(nn)
+                        already_added[i_at].add(nn)
 
     return neighbors
 

@@ -96,9 +96,12 @@ class MeanFieldHubbardModel:
 
         for i_at in range(len(self.neighbors)):
 
-            for d in range(len(self.neighbors[i_at])):
+            for d in range(len(self.t_list)):
 
                 t = self.t_list[d]
+
+                if t == 0.0:
+                    continue
 
                 ns = self.neighbors[i_at][d]
 
