@@ -20,7 +20,7 @@ from . import utils
 
 
 class MeanFieldHubbardModel:
-    def __init__(self, ase_geom, t_list=[2.7], charge=0, multiplicity=1, bond_cutoff=1.8):
+    def __init__(self, ase_geom, t_list=[2.7], charge=0, multiplicity=1, bond_cutoff='auto'):
 
         self.t_list = t_list
         self.multiplicity = multiplicity
@@ -33,6 +33,11 @@ class MeanFieldHubbardModel:
         self.figure_size[0] += 2.5
 
         self.spin_guess = self._load_spin_guess(self.ase_geom)
+
+        if bond_cutoff == 'auto':
+            cc_len = utils.get_cc_bond_len(self.ase_geom)
+            # graphene 2nd nn distance is 1.73*cc, so use halfway there as the cutoff
+            bond_cutoff = 1.37*cc_len
 
         self.neighbor_list = ase.neighborlist.neighbor_list('ij', self.ase_geom, bond_cutoff)
 
