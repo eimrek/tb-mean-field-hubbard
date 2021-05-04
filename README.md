@@ -39,7 +39,7 @@ On a normal desktop computer, installation of the python dependencies can take s
 
 ### Example usage
 
-Example jupyter notebook `mfh.ipynb` is provided that performs the calculation for the Clar's goblet molecule. The geometry is read from a `xyz` file. The whole notebook should run in a matter of seconds on a normal desktop computer.
+Example jupyter notebook `example.ipynb` is provided that performs the calculation for the Clar's goblet molecule. The geometry is read from a `xyz` file. The whole notebook should run in a matter of seconds on a normal desktop computer.
 The following image demonstrates a selection of the output for the calculation for parameters `t=2.7` and `U=3.0` (both in electronvolts).
 
 <p align="center"><img class="marginauto" src="misc/example-output.png" width="700"></p>
