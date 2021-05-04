@@ -29,7 +29,7 @@ class MeanFieldHubbardModel:
         self.ase_geom = ase_geom
         self.num_atoms = len(ase_geom)
 
-        self.figure_size = (utils.atoms_extent(self.ase_geom)[:2] + 1.0) / 4.0
+        self.figure_size = (np.ptp(self.ase_geom.positions, axis=0)[:2] + 1.0) / 4.0
         self.figure_size[0] += 2.5
 
         self.spin_guess = self._load_spin_guess(self.ase_geom)
@@ -277,20 +277,24 @@ class MeanFieldHubbardModel:
             plt.savefig(filename, dpi=300, bbox_inches='tight')
         plt.show()
 
-    def calc_orb_ldos_map(self, i_spin, i_orb, h=6.0, edge_space=5.0, dx=0.1, z_eff=1):
-
-        atoms = self.ase_geom
+    def _get_atoms_extent(self, atoms, edge_space):
         xmin = np.min(atoms.positions[:, 0]) - edge_space
         xmax = np.max(atoms.positions[:, 0]) + edge_space
         ymin = np.min(atoms.positions[:, 1]) - edge_space
         ymax = np.max(atoms.positions[:, 1]) + edge_space
+        return xmin, xmax, ymin, ymax
+
+    def calc_orb_ldos_map(self, i_spin, i_orb, h=6.0, edge_space=5.0, dx=0.1, z_eff=1):
+
+        extent = self._get_atoms_extent(self.ase_geom, edge_space)
 
         # define grid
-        x_arr = np.arange(xmin, xmax, dx)
-        y_arr = np.arange(ymin, ymax, dx)
+        x_arr = np.arange(extent[0], extent[1], dx)
+        y_arr = np.arange(extent[2], extent[3], dx)
+
+        orb_map = np.zeros((len(x_arr), len(y_arr)), dtype=np.complex)
 
         evc = self.evecs[i_spin][i_orb]
-        orb_map = np.zeros((len(x_arr), len(y_arr)), dtype=np.complex)
         for at, coef in zip(self.ase_geom, evc):
             p = at.position
             local_i, local_grid = utils.get_local_grid(x_arr, y_arr, p, cutoff=1.2 * h + 4.0)
@@ -301,17 +305,19 @@ class MeanFieldHubbardModel:
 
     def calc_sts_map(self, energy, broadening=0.05, h=6.0, edge_space=5.0, dx=0.1, z_eff=1):
 
-        final_map = None
+        extent = self._get_atoms_extent(self.ase_geom, edge_space)
+        # define grid
+        x_arr = np.arange(extent[0], extent[1], dx)
+        y_arr = np.arange(extent[2], extent[3], dx)
+
+        final_map = np.zeros((len(x_arr), len(y_arr)))
 
         for i_spin in range(2):
             for i_orb, evl in enumerate(self.evals[i_spin]):
                 if np.abs(energy - evl) <= 3.0 * broadening:
                     broad_coef = utils.gaussian(energy - evl, broadening)
                     orb_ldos_map = self.calc_orb_ldos_map(i_spin, i_orb, h, edge_space, dx, z_eff)
-                    if final_map is None:
-                        final_map = broad_coef * orb_ldos_map
-                    else:
-                        final_map += broad_coef * orb_ldos_map
+                    final_map += broad_coef * orb_ldos_map
         return final_map
 
     def plot_sts_map(self,
@@ -327,7 +333,9 @@ class MeanFieldHubbardModel:
 
         final_map = self.calc_sts_map(energy, broadening, h, edge_space, dx, z_eff)
 
-        ax.imshow(final_map.T, origin='lower', cmap=cmap)
+        extent = self._get_atoms_extent(self.ase_geom, edge_space)
+
+        ax.imshow(final_map.T, origin='lower', cmap=cmap, extent=extent)
         ax.axis('off')
         ax.set_title(title)
 

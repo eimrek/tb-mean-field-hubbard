@@ -8,16 +8,11 @@ import matplotlib.pyplot as plt
 ### ------------------------------------------------------------------------------
 
 
-def atoms_extent(atoms):
-    extent = np.ptp(atoms.positions, axis=0)
-    return extent
-
-
 def scale_atoms(atoms, factor):
     cell_defined = True
     if atoms.cell is None or (atoms.cell == 0.0).all():
         cell_defined = False
-        atoms.cell = np.diag(atoms_extent(atoms))
+        atoms.cell = np.diag(np.ptp(atoms.positions, axis=0))
     scaled_cell = atoms.cell * factor
     atoms.set_cell(scaled_cell, scale_atoms=True)
     if not cell_defined:
