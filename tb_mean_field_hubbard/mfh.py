@@ -20,11 +20,17 @@ from . import utils
 
 
 class MeanFieldHubbardModel:
-    def __init__(self, ase_geom, t_list=[2.7], charge=0, multiplicity=1, bond_cutoff='auto'):
+    def __init__(self, ase_geom, t_list=[2.7], charge=0, multiplicity='auto', bond_cutoff='auto'):
 
         self.t_list = t_list
-        self.multiplicity = multiplicity
         self.charge = charge
+
+        if multiplicity == 'auto':
+            self.multiplicity = 0
+            self.relax_multiplicity = True
+        else:
+            self.multiplicity = multiplicity
+            self.relax_multiplicity = False
 
         self.ase_geom = ase_geom
         self.num_atoms = len(ase_geom)
@@ -37,7 +43,7 @@ class MeanFieldHubbardModel:
         if bond_cutoff == 'auto':
             cc_len = utils.get_cc_bond_len(self.ase_geom)
             # graphene 2nd nn distance is 1.73*cc, so use halfway there as the cutoff
-            bond_cutoff = 1.37*cc_len
+            bond_cutoff = 1.37 * cc_len
 
         self.neighbor_list = ase.neighborlist.neighbor_list('ij', self.ase_geom, bond_cutoff)
 
@@ -76,19 +82,21 @@ class MeanFieldHubbardModel:
 
     def _set_up_tb_model(self):
 
-        # check parameter validity:
-
         self.num_el = self.num_atoms - self.charge
 
-        if self.multiplicity % 2 == self.num_el % 2:
-            raise Exception("ERROR: Charge & multiplicity combination not allowed!")
+        if not self.relax_multiplicity:
 
-        # determine spin populations
+            if self.multiplicity % 2 == self.num_el % 2:
+                raise Exception("ERROR: Charge & multiplicity combination not allowed!")
 
-        self.num_spin_el = [
-            (self.num_el + (self.multiplicity - 1)) // 2,
-            (self.num_el - (self.multiplicity - 1)) // 2,
-        ]
+            # determine spin populations
+            self.num_spin_el = [
+                (self.num_el + (self.multiplicity - 1)) // 2,
+                (self.num_el - (self.multiplicity - 1)) // 2,
+            ]
+
+        else:
+            self.num_spin_el = [0, 0]
 
         lat = [[1.0, 0.0], [0.0, 1.0]]
 
@@ -128,8 +136,9 @@ class MeanFieldHubbardModel:
 
     def print_parameters(self):
         print("Total number of electrons: %d" % self.num_el)
-        print("α electrons: %d" % self.num_spin_el[0])
-        print("β electrons: %d" % self.num_spin_el[1])
+        if not self.relax_multiplicity:
+            print("α electrons: %d" % self.num_spin_el[0])
+            print("β electrons: %d" % self.num_spin_el[1])
 
     ### -------------------------------------------------------------------
     ### MFH routines
@@ -141,11 +150,26 @@ class MeanFieldHubbardModel:
 
         new_spin_resolved_dens = (1.0 - mix_coef) * np.copy(self.spin_resolved_dens)
 
-        for i_spin, n_el in enumerate(self.num_spin_el):
+        if not self.relax_multiplicity:
 
-            for i_mo in range(n_el):
+            for i_spin, n_el in enumerate(self.num_spin_el):
+                for i_mo in range(n_el):
+                    new_spin_resolved_dens[:, i_spin] += mix_coef * np.abs(evecs_list[i_spin][i_mo])**2
 
-                new_spin_resolved_dens[:, i_spin] += mix_coef * np.abs(evecs_list[i_spin][i_mo])**2
+        else:
+            # in case of relaxed multiplicity, fill the lowest orbitals, without considering spin
+            i_a = 0
+            i_b = 0
+            for _i_el in range(self.num_el):
+                en_a = evals_list[0][i_a]
+                en_b = evals_list[1][i_b]
+                if en_a < en_b:
+                    new_spin_resolved_dens[:, 0] += mix_coef * np.abs(evecs_list[0][i_a])**2
+                    i_a += 1
+                else:
+                    new_spin_resolved_dens[:, 1] += mix_coef * np.abs(evecs_list[1][i_b])**2
+                    i_b += 1
+            self.num_spin_el = [i_a, i_b]
 
         return new_spin_resolved_dens
 
@@ -210,6 +234,9 @@ class MeanFieldHubbardModel:
 
         self.evals = evals
         self.evecs = evecs
+
+        if self.relax_multiplicity:
+            self.multiplicity = max(self.num_spin_el) - min(self.num_spin_el) + 1
 
         # post-process
 
@@ -349,8 +376,9 @@ class MeanFieldHubbardModel:
 
     def report(self, num_orb=2, sts_h=3.5, sts_broad=0.05):
 
-        print("abs. magnetization: %14.6f" % self.abs_mag)
-        print("energy:             %14.6f" % self.energy)
+        print(f"multiplicity:       {self.multiplicity:12d}")
+        print(f"abs. magnetization: {self.abs_mag:12.4f}")
+        print(f"energy:             {self.energy: 12.4f}")
         print("---")
         print("spin density:")
         plt.figure(figsize=self.figure_size)
@@ -362,9 +390,9 @@ class MeanFieldHubbardModel:
         self.plot_evals(self.evals)
 
         gap_a, gap_b, gap = self.gaps(self.evals)
-        print("gap alpha: %.6f" % gap_a)
-        print("gap beta:  %.6f" % gap_b)
-        print("gap eff.:  %.6f" % gap)
+        print(f"gap alpha: {gap_a:.4f}")
+        print(f"gap beta:  {gap_b:.4f}")
+        print(f"gap eff.:  {gap:.4f}")
 
         print("---")
         print("frontier orbitals:")
