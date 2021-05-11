@@ -319,7 +319,7 @@ class MeanFieldHubbardModel:
         ymax = np.max(atoms.positions[:, 1]) + edge_space
         return xmin, xmax, ymin, ymax
 
-    def calc_orb_map(self, i_spin, i_orb, h=6.0, edge_space=5.0, dx=0.1, z_eff=1):
+    def calc_orb_map(self, i_spin, i_orb, h=10.0, edge_space=5.0, dx=0.1, z_eff=3.25):
 
         extent = self._get_atoms_extent(self.ase_geom, edge_space)
 
@@ -338,7 +338,7 @@ class MeanFieldHubbardModel:
 
         return orb_map
 
-    def calc_sts_map(self, energy, broadening=0.05, h=6.0, edge_space=5.0, dx=0.1, z_eff=1):
+    def calc_sts_map(self, energy, broadening=0.05, h=10.0, edge_space=5.0, dx=0.1, z_eff=3.25):
 
         extent = self._get_atoms_extent(self.ase_geom, edge_space)
         # define grid
@@ -359,12 +359,12 @@ class MeanFieldHubbardModel:
                      ax,
                      energy,
                      broadening=0.05,
-                     h=6.0,
+                     h=10.0,
                      edge_space=5.0,
                      dx=0.1,
                      title=None,
                      cmap='seismic',
-                     z_eff=1):
+                     z_eff=3.25):
 
         final_map = self.calc_sts_map(energy, broadening, h, edge_space, dx, z_eff)
 
@@ -374,7 +374,7 @@ class MeanFieldHubbardModel:
         ax.axis('off')
         ax.set_title(title)
 
-    def report(self, num_orb=2, sts_h=3.5, sts_broad=0.05):
+    def report(self, num_orb=2, sts_h=10.0, sts_broad=0.05):
 
         print(f"multiplicity:       {self.multiplicity:12d}")
         print(f"abs. magnetization: {self.abs_mag:12.4f}")
