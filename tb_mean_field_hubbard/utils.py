@@ -215,23 +215,23 @@ def hydrogen_like_orbital(x, y, z, n, l, m, nuc=1):
     return orbital
 
 
-def carbon_2pz_slater(x, y, z, z_eff=1):
+def carbon_2pz_slater(x, y, z, z_eff=3.25):
     """Carbon 2pz slater orbital
 
     z_eff determines the effective nuclear charge interacting with the pz orbital
-    Options:
+    Potential options:
 
     z_eff = 1
-        This corresponds to a hydrogen-like 2pz orbital
-        it matches best with DFT reference and is thus the default
+        This corresponds to a hydrogen-like 2pz orbital and in
+        some cases matches well with DFT reference
 
     z_eff = 3.136
-        Based on https://en.wikipedia.org/wiki/Effective_nuclear_charge
+        Value shown in https://en.wikipedia.org/wiki/Effective_nuclear_charge
 
     z_eff = 3.25
-        This is the value calculated by Slater's rules
-        https://en.wikipedia.org/wiki/Slater%27s_rules
-        This value matches with https://doi.org/10.1038/s41557-019-0316-8
+        This is the value calculated by Slater's rules (https://en.wikipedia.org/wiki/Slater%27s_rules)
+        This value is also used in https://doi.org/10.1038/s41557-019-0316-8
+        This is the default.
     
     """
     r_grid = np.sqrt(x**2 + y**2 + z**2)  # angstrom
