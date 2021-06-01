@@ -3,14 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
-import os
-
 import ase
 import ase.neighborlist
 
 import pythtb
-
-import sys
 
 from . import utils
 
@@ -36,7 +32,7 @@ class MeanFieldHubbardModel:
         self.num_atoms = len(ase_geom)
 
         self.figure_size = (np.ptp(self.ase_geom.positions, axis=0)[:2] + 1.0) / 4.0
-        self.figure_size[0] += 2.5
+        self.figure_size[0] = max([self.figure_size[0], 3.5])  # to have enough space for titles
 
         self.spin_guess = self._load_spin_guess(self.ase_geom)
 
@@ -57,6 +53,10 @@ class MeanFieldHubbardModel:
 
         self.evals = None
         self.evecs = None
+
+        # natural orbital evals and evecs
+        self.no_evals = None
+        self.no_evecs = None
 
     ### ------------------------------------------------------------------------------
     ### TB routines
@@ -131,7 +131,7 @@ class MeanFieldHubbardModel:
     def visualize_spin_guess(self):
         plt.figure(figsize=self.figure_size)
         spin_guess_plot = 0.5 * (self.spin_guess[:, 0] - self.spin_guess[:, 1])
-        utils.make_plot(plt.gca(), self.ase_geom, self.neighbor_list, spin_guess_plot)
+        utils.make_evec_plot(plt.gca(), self.ase_geom, self.neighbor_list, spin_guess_plot)
         plt.show()
 
     def print_parameters(self):
@@ -319,7 +319,7 @@ class MeanFieldHubbardModel:
         ymax = np.max(atoms.positions[:, 1]) + edge_space
         return xmin, xmax, ymin, ymax
 
-    def calc_orb_map(self, i_spin, i_orb, h=10.0, edge_space=5.0, dx=0.1, z_eff=3.25):
+    def calc_orb_map(self, evec, h=10.0, edge_space=5.0, dx=0.1, z_eff=3.25):
 
         extent = self._get_atoms_extent(self.ase_geom, edge_space)
 
@@ -329,14 +329,20 @@ class MeanFieldHubbardModel:
 
         orb_map = np.zeros((len(x_arr), len(y_arr)), dtype=np.complex)
 
-        evc = self.evecs[i_spin][i_orb]
-        for at, coef in zip(self.ase_geom, evc):
+        for at, coef in zip(self.ase_geom, evec):
             p = at.position
             local_i, local_grid = utils.get_local_grid(x_arr, y_arr, p, cutoff=1.2 * h + 4.0)
             pz_orb = utils.carbon_2pz_slater(local_grid[0] - p[0], local_grid[1] - p[1], h, z_eff)
             orb_map[local_i[0]:local_i[1], local_i[2]:local_i[3]] += coef * pz_orb
 
         return orb_map
+
+    def plot_orb_squared_map(self, ax, evec, h=10.0, edge_space=5.0, dx=0.1, title=None, cmap='seismic', z_eff=3.25):
+        orb_map = np.abs(self.calc_orb_map(evec, h, edge_space, dx, z_eff))**2
+        extent = self._get_atoms_extent(self.ase_geom, edge_space)
+        ax.imshow(orb_map.T, origin='lower', cmap=cmap, extent=extent)
+        ax.axis('off')
+        ax.set_title(title)
 
     def calc_sts_map(self, energy, broadening=0.05, h=10.0, edge_space=5.0, dx=0.1, z_eff=3.25):
 
@@ -351,7 +357,8 @@ class MeanFieldHubbardModel:
             for i_orb, evl in enumerate(self.evals[i_spin]):
                 if np.abs(energy - evl) <= 3.0 * broadening:
                     broad_coef = utils.gaussian(energy - evl, broadening)
-                    orb_ldos_map = np.abs(self.calc_orb_map(i_spin, i_orb, h, edge_space, dx, z_eff))**2
+                    evec = self.evecs[i_spin][i_orb]
+                    orb_ldos_map = np.abs(self.calc_orb_map(evec, h, edge_space, dx, z_eff))**2
                     final_map += broad_coef * orb_ldos_map
         return final_map
 
@@ -374,6 +381,28 @@ class MeanFieldHubbardModel:
         ax.axis('off')
         ax.set_title(title)
 
+    def plot_eigenvector(self, ax, evec, title=None):
+        utils.make_evec_plot(ax, self.ase_geom, self.neighbor_list, evec, title=title)
+
+    def plot_mo_eigenvector(self, mo_index, spin=0, ax=None):
+        title = "mo%d s%d %s, en: %.2f" % (mo_index, spin, utils.orb_label(
+            mo_index, self.num_spin_el[spin]), self.evals[spin][mo_index])
+        if ax is None:
+            plt.figure(figsize=self.figure_size)
+            self.plot_eigenvector(plt.gca(), self.evecs[spin][mo_index], title=title)
+            plt.show()
+        else:
+            self.plot_eigenvector(ax, self.evecs[spin][mo_index], title=title)
+
+    def plot_no_eigenvector(self, no_index, ax=None):
+        title = "no%d, occ=%.4f" % (no_index, self.no_evals[no_index])
+        if ax is None:
+            plt.figure(figsize=self.figure_size)
+            self.plot_eigenvector(plt.gca(), self.no_evecs[no_index], title=title)
+            plt.show()
+        else:
+            self.plot_eigenvector(ax, self.no_evecs[no_index], title=title)
+
     def report(self, num_orb=2, sts_h=10.0, sts_broad=0.05):
 
         print(f"multiplicity:       {self.multiplicity:12d}")
@@ -382,7 +411,7 @@ class MeanFieldHubbardModel:
         print("---")
         print("spin density:")
         plt.figure(figsize=self.figure_size)
-        utils.make_plot(plt.gca(), self.ase_geom, self.neighbor_list, self.spin_density)
+        utils.make_evec_plot(plt.gca(), self.ase_geom, self.neighbor_list, self.spin_density)
         plt.show()
 
         print("---")
@@ -406,23 +435,35 @@ class MeanFieldHubbardModel:
 
             _fig, axs = plt.subplots(nrows=1, ncols=4, figsize=(4 * self.figure_size[0], self.figure_size[1]))
 
-            title1 = "mo%d α %s, en: %.2f" % (i_mo, utils.orb_label(i_mo, self.num_spin_el[0]), self.evals[0][i_mo])
-            utils.make_plot(axs[0], self.ase_geom, self.neighbor_list, self.evecs[0][i_mo], title1)
+            self.plot_mo_eigenvector(i_mo, spin=0, ax=axs[0])
+            self.plot_mo_eigenvector(i_mo, spin=1, ax=axs[1])
 
-            title2 = "mo%d β %s, en: %.2f" % (i_mo, utils.orb_label(i_mo, self.num_spin_el[1]), self.evals[1][i_mo])
-            utils.make_plot(axs[1], self.ase_geom, self.neighbor_list, self.evecs[1][i_mo], title2)
+            title1 = "sts h=%.1f, en: %.2f" % (sts_h, self.evals[0][i_mo])
+            self.plot_sts_map(axs[2], self.evals[0][i_mo], broadening=sts_broad, h=sts_h, title=title1)
 
-            title3 = "sts h=%.1f, en: %.2f" % (sts_h, self.evals[0][i_mo])
-            self.plot_sts_map(axs[2], self.evals[0][i_mo], broadening=sts_broad, h=sts_h, title=title3)
-
-            title4 = "sts h=%.1f, en: %.2f" % (sts_h, self.evals[1][i_mo])
-            self.plot_sts_map(axs[3], self.evals[1][i_mo], broadening=sts_broad, h=sts_h, title=title4)
+            title2 = "sts h=%.1f, en: %.2f" % (sts_h, self.evals[1][i_mo])
+            self.plot_sts_map(axs[3], self.evals[1][i_mo], broadening=sts_broad, h=sts_h, title=title2)
 
             plt.show()
 
-    def plot_orbital(self, mo_index, spin=0):
-        title = "mo%d s%d %s, en: %.2f" % (mo_index, spin, utils.orb_label(
-            mo_index, self.num_spin_el[spin]), self.evals[spin][mo_index])
-        plt.figure(figsize=self.figure_size)
-        utils.make_plot(plt.gca(), self.ase_geom, self.neighbor_list, self.evecs[spin][mo_index], title=title)
-        plt.show()
+    def calculate_natural_orbitals(self):
+        # build the one particle reduced density matrix
+        dens_mat = None
+
+        for i_spin in range(2):
+            for i_el in range(self.num_spin_el[i_spin]):
+                evec = self.evecs[i_spin, i_el]
+                if dens_mat is None:
+                    dens_mat = np.outer(evec, np.conj(evec))
+                else:
+                    dens_mat += np.outer(evec, np.conj(evec))
+
+        # Diagonalize the density matrix
+        self.no_evals, self.no_evecs = np.linalg.eig(dens_mat)
+        self.no_evals = np.abs(self.no_evals)
+        self.no_evecs = self.no_evecs.T
+
+        # sort the natural orbitals based on occupations
+        sort_inds = (-1 * self.no_evals).argsort()
+        self.no_evals = self.no_evals[sort_inds]
+        self.no_evecs = self.no_evecs[sort_inds]

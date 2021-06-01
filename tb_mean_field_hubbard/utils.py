@@ -150,7 +150,7 @@ def visualize_evec(ax, atoms, evec):
     #print(" Vol: %.6f"%vol)
 
 
-def make_plot(ax, atoms, neighbor_list, data, title=None, filename=None):
+def make_evec_plot(ax, atoms, neighbor_list, data, title=None, filename=None):
 
     ax.set_aspect('equal')
     visualize_backbone(ax, atoms, neighbor_list)
