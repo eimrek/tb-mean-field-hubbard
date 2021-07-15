@@ -124,6 +124,21 @@ class MeanFieldHubbardModel:
                         self.model_a.set_hop(-t, i_at, n)
                         self.model_b.set_hop(-t, i_at, n)
 
+    def override_hoppings(self, custom_t_list=[]):
+        """ Override tight binding hoppings:
+
+        custom_t_list - list of (atom index 1, atom index 2, new_hop)
+
+        Note: adding the hopping in one direction automatically adds the other as well
+        """
+        for custom_t in custom_t_list:
+            if len(custom_t) != 3:
+                print("Error: please specify (atom index 1, atom index 2, hopping)")
+                return
+            i1, i2, t = custom_t
+            self.model_a.set_hop(-t, i1, i2, mode='reset')
+            self.model_b.set_hop(-t, i1, i2, mode='reset')
+
     def visualize_tb_model(self):
         self.model_a.visualize(0, 1)
         plt.show()
