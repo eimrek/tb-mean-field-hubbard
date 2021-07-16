@@ -136,6 +136,13 @@ class MeanFieldHubbardModel:
                 print("Error: please specify (atom index 1, atom index 2, hopping)")
                 return
             i1, i2, t = custom_t
+            if i1 == i2:
+                print("Error: can't specify hopping from a site to itself.")
+                return
+            if not (0 <= i1 < self.num_atoms) or not (0 <= i2 < self.num_atoms):
+                print("Error: index out of range.")
+                return
+            if i1 < i2: i1, i2 = i2, i1
             self.model_a.set_hop(-t, i1, i2, mode='reset')
             self.model_b.set_hop(-t, i1, i2, mode='reset')
 
