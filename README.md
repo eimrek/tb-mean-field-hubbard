@@ -19,6 +19,8 @@ Python 3 (tested with 3.6 - 3.9) environment is required with the following libr
 * Atomistic simulation environment: `ase` (3.18.1)
 * Python Tight Binding: `pythtb` (1.7.2)
 
+Note: the dependencies will be automatically installed via `pip`.
+
 ### Installation
 
 Option 1) Install the library and dependencies hosted on PyPI:

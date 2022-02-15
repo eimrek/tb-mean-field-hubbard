@@ -3,10 +3,22 @@ import scipy.special
 
 import matplotlib.pyplot as plt
 
+import igor_tools
+
+### ------------------------------------------------------------------------------
+### PUBLIC TOOLS
+### ------------------------------------------------------------------------------
+
+def create_itx(data, extent, wavename, filename):
+    dx = (extent[1] - extent[0]) / data.shape[0]
+    dy = (extent[3] - extent[2]) / data.shape[1]
+    xaxis = (extent[0], dx, "[ang]")
+    yaxis = (extent[2], dy, "[ang]")
+    igor_tools.write_2d_itx(filename, data, xaxis, yaxis, wavename)
+
 ### ------------------------------------------------------------------------------
 ### GEOMETRY TOOLS
 ### ------------------------------------------------------------------------------
-
 
 def scale_atoms(atoms, factor):
     cell_defined = True
