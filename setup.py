@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="tb-mean-field-hubbard",
-    version="1.5.1",
+    version="2.0.0",
     author="Kristjan Eimre",
     author_email="kristjaneimre@gmail.com",
     description="Package to run tight-binding mean field hubbard calculations",
@@ -25,5 +25,6 @@ setuptools.setup(
         "matplotlib",
         "ase",
         "pythtb",
+        'igor-tools @ git+https://git@github.com/nanotech-empa/igor-tools@main#egg=igor-tools',
     ],
 )
