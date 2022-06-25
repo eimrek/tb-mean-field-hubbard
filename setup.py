@@ -25,6 +25,6 @@ setuptools.setup(
         "matplotlib",
         "ase",
         "pythtb",
-        'igor-tools @ git+https://git@github.com/nanotech-empa/igor-tools@main#egg=igor-tools',
+        "igor-tools",
     ],
 )
