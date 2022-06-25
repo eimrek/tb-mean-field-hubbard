@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="tb-mean-field-hubbard",
-    version="2.0.0",
+    version="2.0.1",
     author="Kristjan Eimre",
     author_email="kristjaneimre@gmail.com",
     description="Package to run tight-binding mean field hubbard calculations",
