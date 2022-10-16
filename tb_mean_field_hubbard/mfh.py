@@ -19,6 +19,7 @@ class MeanFieldHubbardModel:
     """
     Class that takes care of running the Mean Field Hubbard calculation
     """
+
     def __init__(self, ase_geom, t_list=[2.7], charge=0, multiplicity='auto', bond_cutoff='auto'):
 
         self.t_list = t_list
@@ -33,6 +34,7 @@ class MeanFieldHubbardModel:
 
         self.ase_geom = ase_geom
         self.num_atoms = len(ase_geom)
+        self.onsite_energies = np.zeros(self.num_atoms)  # by default, no on-site energies
 
         self.figure_size = (np.ptp(self.ase_geom.positions, axis=0)[:2] + 1.0) / 4.0
         self.figure_size[0] = max([self.figure_size[0], 3.5])  # to have enough space for titles
@@ -158,6 +160,22 @@ class MeanFieldHubbardModel:
             self.model_a.set_hop(-t, i1, i2, mode='reset')
             self.model_b.set_hop(-t, i1, i2, mode='reset')
 
+    def set_onsite_energies(self, onsites_list):
+        """ Set the on-site energy/potentials for a list of sites
+
+        onsites_list - list of tuples (atom index, on-site energy)
+        """
+
+        for onsite in onsites_list:
+            if len(onsite) != 2:
+                print("Error: please specify (atom index, on-site energy)")
+                return
+            i, e = onsite
+            if not (0 <= i < self.num_atoms):
+                print("Error: index out of range.")
+                return
+            self.onsite_energies[i] = e
+
     def visualize_tb_model(self):
         self.model_a.visualize(0, 1)
         plt.show()
@@ -213,8 +231,8 @@ class MeanFieldHubbardModel:
 
         for i_at, d in enumerate(self.spin_resolved_dens):
 
-            self.model_a.set_onsite(u * d[1], i_at, mode="reset")
-            self.model_b.set_onsite(u * d[0], i_at, mode="reset")
+            self.model_a.set_onsite(u * d[1] + self.onsite_energies[i_at], i_at, mode="reset")
+            self.model_b.set_onsite(u * d[0] + self.onsite_energies[i_at], i_at, mode="reset")
 
         # Solve the new TB
         (evals_a, evecs_a) = self.model_a.solve_all(eig_vectors=True)
