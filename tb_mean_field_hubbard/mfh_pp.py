@@ -76,11 +76,20 @@ class MFHPostProcess:
 
         return orb_map, extent
 
-    def plot_orb_squared_map(self, ax, evec, h=10.0, edge_space=5.0, dx=0.1, title=None, cmap='seismic', z_eff=3.25):
+    def plot_orb_squared_map(self, evec, h=10.0, edge_space=5.0, dx=0.1, title=None, cmap='seismic', z_eff=3.25, ax=None):
         orb_map, extent = self.calc_orb_map(evec, h, edge_space, dx, z_eff)
-        ax.imshow((np.abs(orb_map)**2).T, origin='lower', cmap=cmap, extent=extent)
-        ax.axis('off')
-        ax.set_title(title)
+
+        use_ax = ax
+        if ax is None:
+            plt.figure(figsize=self.mfh.figure_size)
+            use_ax = plt.gca()
+
+        use_ax.imshow((np.abs(orb_map)**2).T, origin='lower', cmap=cmap, extent=extent)
+        use_ax.axis('off')
+        use_ax.set_title(title)
+
+        if ax is None:
+            plt.show()
 
     def calc_sts_map(self, energy, broadening=0.05, h=10.0, edge_space=5.0, dx=0.1, z_eff=3.25):
 
@@ -101,7 +110,6 @@ class MFHPostProcess:
         return final_map, extent
 
     def plot_sts_map(self,
-                     ax,
                      energy,
                      broadening=0.05,
                      h=10.0,
@@ -109,13 +117,23 @@ class MFHPostProcess:
                      dx=0.1,
                      title=None,
                      cmap='seismic',
-                     z_eff=3.25):
+                     z_eff=3.25,
+                     ax=None):
 
         final_map, extent = self.calc_sts_map(energy, broadening, h, edge_space, dx, z_eff)
 
-        ax.imshow(final_map.T, origin='lower', cmap=cmap, extent=extent)
-        ax.axis('off')
-        ax.set_title(title)
+        use_ax = ax
+        if ax is None:
+            plt.figure(figsize=self.mfh.figure_size)
+            use_ax = plt.gca()
+
+        use_ax.imshow(final_map.T, origin='lower', cmap=cmap, extent=extent)
+        use_ax.axis('off')
+        use_ax.set_title(title)
+
+        if ax is None:
+            plt.show()
+
 
     def plot_eigenvector(self, ax, evec, title=None):
         utils.make_evec_plot(ax, self.mfh.ase_geom, self.mfh.neighbor_list, evec, title=title)
@@ -174,10 +192,10 @@ class MFHPostProcess:
             self.plot_mo_eigenvector(i_mo, spin=1, ax=axs[1])
 
             title1 = "sts h=%.1f, en: %.2f" % (sts_h, self.mfh.evals[0][i_mo])
-            self.plot_sts_map(axs[2], self.mfh.evals[0][i_mo], broadening=sts_broad, h=sts_h, title=title1)
+            self.plot_sts_map(self.mfh.evals[0][i_mo], broadening=sts_broad, h=sts_h, title=title1, ax=axs[2])
 
             title2 = "sts h=%.1f, en: %.2f" % (sts_h, self.mfh.evals[1][i_mo])
-            self.plot_sts_map(axs[3], self.mfh.evals[1][i_mo], broadening=sts_broad, h=sts_h, title=title2)
+            self.plot_sts_map(self.mfh.evals[1][i_mo], broadening=sts_broad, h=sts_h, title=title2, ax=axs[3])
 
             plt.show()
 
